@@ -146,18 +146,18 @@ if(!isset($_SESSION['login'])){
   $_GET  = filter_input_array(INPUT_GET, FILTER_SANITIZE_STRING);
   $clear_fields = false;
   if(isset($vars['debug']['post'])){
-	echo 'POST variables!';
-	var_dump($_POST);
+    echo 'POST variables!';
+    var_dump($_POST);
   }
 
   if(isset($vars['debug']['get'])){
-	echo 'GET variables!';
-	var_dump($_GET);
+    echo 'GET variables!';
+    var_dump($_GET);
   }
 
   if(isset($vars['debug']['session'])){
-	echo 'SESSION variables!';
-	var_dump($_SESSION);
+    echo 'SESSION variables!';
+    var_dump($_SESSION);
   }
 
   if(isset($_GET['activate'])){
@@ -166,12 +166,12 @@ if(!isset($_SESSION['login'])){
      if(!empty($_GET['key']) && isset($_GET['key']))
       {
          try { 
-	     $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
          } catch (Exception $exc) {
-	     $msg = "ERROR 101. Please contact your site administrator.";
+         $msg = "ERROR 101. Please contact your site administrator.";
          } 
-	
-	$code=mysqli_real_escape_string($connection,$_GET['key']);
+    
+    $code=mysqli_real_escape_string($connection,$_GET['key']);
         $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code'");
 
         if(mysqli_num_rows($c) > 0)
@@ -181,18 +181,18 @@ if(!isset($_SESSION['login'])){
            {
               mysqli_query($connection,"UPDATE users SET status='1' WHERE activation='$code'");
               $msg="Your account is activated";
-  	      $clear_fields = true;
+            $clear_fields = true;
            }
            else
            {
               $msg ="Your account is already active, no need to activate again";
-  	      $clear_fields = true;
+            $clear_fields = true;
            }
         } else {
-	   $msg ="Wrong activation code.";
-  	   $clear_fields = true;
+       $msg ="Wrong activation code.";
+         $clear_fields = true;
         }
-	mysqli_close($connection); 
+    mysqli_close($connection); 
      }
      if(!empty($_GET['code']) && isset($_GET['code']))
      {
@@ -205,7 +205,7 @@ if(!isset($_SESSION['login'])){
 
     // register case
     $case_failure = 1;
-		 
+         
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']) && !empty($_POST['justification']) && isset($_POST['justification'])  )
     {
        // username and password sent from form
@@ -220,12 +220,12 @@ if(!isset($_SESSION['login'])){
        if(preg_match($regex, $email))
        {  
           try { 
-	     $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
           } catch (Exception $exc) {
-	     $msg = "ERROR 101. Please contact your site administrator.";
-       	     $clear_fields = true;
+         $msg = "ERROR 101. Please contact your site administrator.";
+                $clear_fields = true;
           } 
-	  
+      
           $activation=md5($email.time()); // encrypted email+timestamp
           $count=mysqli_query($connection,"SELECT uid FROM users WHERE email='$email'");
 
@@ -239,23 +239,23 @@ if(!isset($_SESSION['login'])){
              $base_url = $vars['site']['base_url'];
              $body='Hi, <br/> <br/> We need to make sure you are human. Please verify your email and get started using your webadmin account. <br/> <br/> <a href="'.$base_url.'?activate=true&key='.$activation.'">'.$base_url.'?activate=true&key='.$activation.'</a>';
              $body_admin='Hi, <br/> <br/> A new user - ' . $email. ' wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="'.$base_url.'?activate=true&code='.$activation.'">'.$base_url.'?activate=true&code='.$activation.'</a>';
-	     $headers  = 'MIME-Version: 1.0' . "\r\n";
-	     $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+         $headers  = 'MIME-Version: 1.0' . "\r\n";
+         $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
              mail($to, $subject, $body, $headers,'-froot@localhost'); 
              mail($vars['site']['admin_mail'], 'New user activation', $body_admin, $headers,'-froot@localhost'); 
              $msg= "Registration successful, please activate your email.";
           } else {
              $msg= 'The email is already taken, please try new.';
-       	     $clear_fields = true;
+                $clear_fields = true;
           }
-  	  mysqli_close($connection); 
+        mysqli_close($connection); 
        } else {
            $msg = 'The email you have entered is invalid, please try again.';
-	   $clear_fields = false;
+       $clear_fields = false;
        }
     } else {
-	$msg = "Please fill all three fields: email, name and justification for registration!";
-	$clear_fields = false;
+    $msg = "Please fill all three fields: email, name and justification for registration!";
+    $clear_fields = false;
     }
 
   } else {
@@ -274,12 +274,12 @@ if(!isset($_SESSION['login'])){
        
        if(preg_match($regex, $email))
        { 
-	  // check for admin
- 	  if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
-	     $_SESSION['login'] = "0";
-	     $_SESSION['mail'] = $email;
-	     print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
-	  }
+      // check for admin
+       if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
+         $_SESSION['login'] = "0";
+         $_SESSION['mail'] = $email;
+         print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
+      }
  
           try { 
              $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -289,32 +289,32 @@ if(!isset($_SESSION['login'])){
           
           $count = mysqli_query($connection,"SELECT uid, status, owner_authorized FROM users WHERE email='$email' and password='$password'");
 
-	  $cnt = mysqli_num_rows($count);
-	  if($cnt>1) {
+      $cnt = mysqli_num_rows($count);
+      if($cnt>1) {
              $msg = "ERROR 102. Please contact your site administrator.";
           }else if ( $cnt == 0 ) {
-	     $msg = "Invalid email and/or password combination.";
-	     $clear_fields = false;
-	  }else if ( $cnt == 1 ){
-	     $vals = mysqli_fetch_array($count);	
-	     if ($vals['status'] != '1'){
-		$msg = "You have not yet activated your email.";
-	        $clear_fields = false;
-	     } else if ($vals['owner_authorized'] != '1') {
-		$msg = "Your account is awaiting site owner's authorization.";
-	        $clear_fields = false;
-	     } else {
-		$_SESSION['login'] = $vals['uid'];
-		$_SESSION['mail'] = $email;
-		header("refresh: 0;");
-	     } 
+         $msg = "Invalid email and/or password combination.";
+         $clear_fields = false;
+      }else if ( $cnt == 1 ){
+         $vals = mysqli_fetch_array($count);    
+         if ($vals['status'] != '1'){
+        $msg = "You have not yet activated your email.";
+            $clear_fields = false;
+         } else if ($vals['owner_authorized'] != '1') {
+        $msg = "Your account is awaiting site owner's authorization.";
+            $clear_fields = false;
+         } else {
+        $_SESSION['login'] = $vals['uid'];
+        $_SESSION['mail'] = $email;
+        header("refresh: 0;");
+         } 
           }
           mysqli_close($connection);
        }
      } else {
        if(isset($_POST))
           $msg = "Please fill email and password fields..";
-	  $clear_fields = false;
+      $clear_fields = false;
      } 
   }
   if( (isset($_GET['action']) && $_GET['action']=='view') ||  (isset($_GET['action']) && $_GET['action']=='login')){
@@ -349,35 +349,35 @@ if(!isset($_SESSION['login'])){
               {
                  mysqli_query($connection,"UPDATE users SET owner_authorized='1' WHERE activation='$code'");
                  $msg="User account is activated";
-		 $vals = mysqli_fetch_array($count);
-		 $to=$vals['email'];
+         $vals = mysqli_fetch_array($count);
+         $to=$vals['email'];
                  $subject="webadmin.php - Login authorized";
                  $base_url = $vars['site']['base_url'];
                  $body='Hi ' .$to. ', <br/> <br/> Congratulations. The site owner has approved of your login to webadmin. <a href="'.$base_url.'">Login now</a>';
-    	         $headers  = 'MIME-Version: 1.0' . "\r\n";
-      	         $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+                 $headers  = 'MIME-Version: 1.0' . "\r\n";
+                   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
                  mail($to, $subject, $body, $headers,'-froot@localhost'); 
-		 
-	  	 $clear_fields = false;
+         
+           $clear_fields = false;
               }
               else
               {
                  $msg ="User account already active.";
-	  	 $clear_fields = false;
+           $clear_fields = false;
               }
            } else {
               $msg ="Wrong activation code.";
-	      $clear_fields = false;
+          $clear_fields = false;
            }
            mysqli_close($connection);
-	   print_and_reload($msg, 3,  $vars['site']['base_url']);
+       print_and_reload($msg, 3,  $vars['site']['base_url']);
         }
      }  
   }
 }
 
 function print_and_reload($msg, $seconds, $url){
-	   echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
+       echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
            echo '<script type="text/javascript">
            function doReload(){
            <!--
@@ -583,8 +583,8 @@ switch ($action) {
 case 'presetvalues':
  die('In preset values');
 # if(!empty($_GET['key']) && isset($_POST['key'])){
-# }else{
-# }
+#Ã‚Â }else{
+#Ã‚Â }
 break;
 
 case 'preset':
@@ -595,17 +595,17 @@ case 'preset':
        $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
        $count = mysqli_query($connection,$query);
        if(mysqli_num_rows($count) == 0){
-	   // no such request
-	   $msg = "Please retry. There was no such request received.";
+       // no such request
+       $msg = "Please retry. There was no such request received.";
        }else{
            // show password reset fields
-	   $passwords = trim(mysql_escape_string($_POST['password']));
+       $passwords = trim(mysql_escape_string($_POST['password']));
            $password = md5($passwords);
-	   $msg = "Please fill with a new password.";
+       $msg = "Please fill with a new password.";
        }
     }else{
         //invalid password reset attempt
-	   $msg = "Invalid password reset event.";
+       $msg = "Invalid password reset event.";
     }    
     show_register ($msg, 3, "", "", "", true, true); 
 break;
@@ -622,36 +622,36 @@ case 'forgot':
        { 
           $connection =get_connection(); 
           $query ="SELECT uid FROM users WHERE email='$email' and owner_authorized='1'";
- 	  $count = mysqli_query($connection,$query);
-	  $cnt = mysqli_num_rows($count);
-	  if($cnt>1) {
+       $count = mysqli_query($connection,$query);
+      $cnt = mysqli_num_rows($count);
+      if($cnt>1) {
              $msg = "ERROR 102. Please contact your site administrator.";
           }else if ( $cnt == 0 ) {
-	     $msg = "Your registration request is awaiting moderation.";
-	     $clear_fields = false;
-	  }else if ( $cnt == 1 ){	
-	     $activation=md5($email.time()); // encrypted email+timestamp
-	     $query = "UPDATE users SET activation='".$activation ."' WHERE email='" .$email. "'";
+         $msg = "Your registration request is awaiting moderation.";
+         $clear_fields = false;
+      }else if ( $cnt == 1 ){    
+         $activation=md5($email.time()); // encrypted email+timestamp
+         $query = "UPDATE users SET activation='".$activation ."' WHERE email='" .$email. "'";
              mysqli_query($connection,$query);
                 // sending email
              $to=$email;
              $subject="webadmin.php - Password recovery";
              $base_url = $vars['site']['base_url'];
              $body='Hi, <br/> <br/> We received a request for a password reset of your webadmin account. If you would like to change your password please visit the link below. <br/> <br/> <a href="'.$base_url.'?action=preset&key='.$activation.'">'.$base_url.'?action=preset&key='.$activation.'</a>';
-   	     $headers  = 'MIME-Version: 1.0' . "\r\n";
-   	     $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+            $headers  = 'MIME-Version: 1.0' . "\r\n";
+            $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
              mail($to, $subject, $body, $headers,'-froot@localhost'); 
              $msg= "Password reset details sent to your email.";
           }
           mysqli_close($connection);
        } else {
-  	  $msg = "Improper email address.";
-	  $clear_fields = false;
+        $msg = "Improper email address.";
+      $clear_fields = false;
        }
      } else {
        if(isset($_POST))
           $msg = "Please fill the email field.";
-	  $clear_fields = false;
+      $clear_fields = false;
      }
      show_register ($msg, 2, "", "", "", true, true); 
 break;
@@ -884,7 +884,7 @@ case 'view':
   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path in " . get_all_paths($file) ;
   //echo $query;
   get_read_access("Please login to copy the files.",$files, $query, 'read_access_missing', 'read', $file);
-	 
+     
   if (is_script($file)) {
 
     /* highlight_file is a mess! */
@@ -1238,7 +1238,7 @@ case 'copy':
       foreach ($files as $file) {
         $filename = substr($file, strlen($directory));
         $d = addslash($dest) . $filename;
-	//die($d);
+    //die($d);
         if (!@is_dir($file) && !@file_exists($d) && @copy($file, $d)) {
           $success[] = $file;
         } else {
@@ -2034,66 +2034,66 @@ function listing ($list) {
        echo '<td>';
        #if($file['is_file'])
        {
-	 try { 
-	     $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+     try { 
+         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
          } catch (Exception $exc) {
-	     $msg = "ERROR 101. Please contact your site administrator.";
+         $msg = "ERROR 101. Please contact your site administrator.";
          }
          $cnt=mysqli_query($connection,"SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "");
-	#echo "SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "";
- 	if($cnt){ 
-	   $can_write=-1;
-	   $can_read=-1;
+    #echo "SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "";
+     if($cnt){ 
+       $can_write=-1;
+       $can_read=-1;
            while($r = mysqli_fetch_assoc($cnt))
-	   {
-		#print_r($r);
-		#echo '<hr/>';
-		if($r['access_type']=='0'){
-	              // read
-	              if($r['owner_authorized'] == '1'){
-	           	$can_read=1;
-	              }else{
-	           	$can_read=0;
-	              }
-	        }else if($r['access_type']=='1'){
-	              // write
-	              if($r['owner_authorized'] == '1'){
-	           	$can_write=1;
-	              }else{	
-	           	$can_write=0;
-	              }
-	        }
-	   }
+       {
+        #print_r($r);
+        #echo '<hr/>';
+        if($r['access_type']=='0'){
+                  // read
+                  if($r['owner_authorized'] == '1'){
+                   $can_read=1;
+                  }else{
+                   $can_read=0;
+                  }
+            }else if($r['access_type']=='1'){
+                  // write
+                  if($r['owner_authorized'] == '1'){
+                   $can_write=1;
+                  }else{    
+                   $can_write=0;
+                  }
+            }
+       }
 
-	   if($can_write==1){
-		//RW
-		echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
+       if($can_write==1){
+        //RW
+        echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
            <input class="small" type="submit" name="Write'. $i . '" value="Can Write" disabled />';
-	   }else if($can_write==0 && $can_read<=0){
-	        //W pending
-			echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"  disabled />
+       }else if($can_write==0 && $can_read<=0){
+            //W pending
+            echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"  disabled />
            <input class="small" type="submit" name="Write'. $i . '" value="Write Pending" disabled />';
-	   }else if($can_write==0 && $can_read==1){
-	        //Read, W pending
-			echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
+       }else if($can_write==0 && $can_read==1){
+            //Read, W pending
+            echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
            <input class="small" type="submit" name="Write'. $i . '" value="Write Pending" disabled />';
-	   }else if($can_write==-1 && $can_read==0){
-	        //R pending	
-		echo '<input class="small" type="submit" name="Read'. $i .'" value="Read Pending"  disabled />
+       }else if($can_write==-1 && $can_read==0){
+            //R pending    
+        echo '<input class="small" type="submit" name="Read'. $i .'" value="Read Pending"  disabled />
            <input class="small" type="submit" name="Write'. $i . '" value="Write" />';
-	   }else if($can_read==1){
-		//R		
-		echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
+       }else if($can_read==1){
+        //R        
+        echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
            <input class="small" type="submit" name="Write'. $i . '" value="Write"  />';
 
-	   }else{
-		echo '<input class="small" type="submit" name="Read'. $i .'" value="Read" />
+       }else{
+        echo '<input class="small" type="submit" name="Read'. $i .'" value="Read" />
            <input class="small" type="submit" name="Write'. $i . '" value="Write"  />';
-	   }
-	    
+       }
+        
        echo '</td>';
         } else {
-	      echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"/>
+          echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"/>
            <input class="small" type="submit" name="Write'. $i . '" value="Write"/>';
         }
    echo '
@@ -2352,7 +2352,7 @@ function getwords ($lang) {
 'file' => 'Datei',
 'filename' => 'Dateiname',
 
-'size' => 'Größe',
+'size' => 'GrÃƒÂ¶ÃƒÅ¸e',
 'permission' => 'Rechte',
 'owner' => 'Eigner',
 'group' => 'Gruppe',
@@ -2361,10 +2361,10 @@ function getwords ($lang) {
 
 'read' => 'lesen',
 'write' => 'schreiben',
-'execute' => 'ausführen',
+'execute' => 'ausfÃƒÂ¼hren',
 
 'create_symlink' => 'Symlink erstellen',
-'delete' => 'löschen',
+'delete' => 'lÃƒÂ¶schen',
 'rename' => 'umbenennen',
 'move' => 'verschieben',
 'copy' => 'kopieren',
@@ -2375,29 +2375,29 @@ function getwords ($lang) {
 'change' => 'wechseln',
 'save' => 'speichern',
 'set' => 'setze',
-'reset' => 'zurücksetzen',
+'reset' => 'zurÃƒÂ¼cksetzen',
 'relative' => 'Pfad zum Ziel relativ',
 
 'yes' => 'Ja',
 'no' => 'Nein',
-'back' => 'zurück',
+'back' => 'zurÃƒÂ¼ck',
 'destination' => 'Ziel',
 'symlink' => 'Symbolischer Link',
 'no_output' => 'keine Ausgabe',
 
 'user' => 'Benutzername',
 'password' => 'Kennwort',
-'add' => 'hinzufügen',
-'add_basic_auth' => 'HTTP-Basic-Auth hinzufügen',
+'add' => 'hinzufÃƒÂ¼gen',
+'add_basic_auth' => 'HTTP-Basic-Auth hinzufÃƒÂ¼gen',
 
 'uploaded' => '"[%1]" wurde hochgeladen.',
 'not_uploaded' => '"[%1]" konnte nicht hochgeladen werden.',
 'already_exists' => '"[%1]" existiert bereits.',
 'created' => '"[%1]" wurde erstellt.',
 'not_created' => '"[%1]" konnte nicht erstellt werden.',
-'really_delete' => 'Sollen folgende Dateien wirklich gelöscht werden?',
-'deleted' => "Folgende Dateien wurden gelöscht:\n[%1]",
-'not_deleted' => "Folgende Dateien konnten nicht gelöscht werden:\n[%1]",
+'really_delete' => 'Sollen folgende Dateien wirklich gelÃƒÂ¶scht werden?',
+'deleted' => "Folgende Dateien wurden gelÃƒÂ¶scht:\n[%1]",
+'not_deleted' => "Folgende Dateien konnten nicht gelÃƒÂ¶scht werden:\n[%1]",
 'rename_file' => 'Benenne Datei um:',
 'renamed' => '"[%1]" wurde in "[%2]" umbenannt.',
 'not_renamed' => '"[%1] konnte nicht in "[%2]" umbenannt werden.',
@@ -2408,15 +2408,15 @@ function getwords ($lang) {
 'copied' => "Folgende Dateien wurden nach \"[%2]\" kopiert:\n[%1]",
 'not_copied' => "Folgende Dateien konnten nicht nach \"[%2]\" kopiert werden:\n[%1]",
 'not_edited' => '"[%1]" kann nicht editiert werden.',
-'executed' => "\"[%1]\" wurde erfolgreich ausgeführt:\n{%2}",
-'not_executed' => "\"[%1]\" konnte nicht erfolgreich ausgeführt werden:\n{%2}",
+'executed' => "\"[%1]\" wurde erfolgreich ausgefÃƒÂ¼hrt:\n{%2}",
+'not_executed' => "\"[%1]\" konnte nicht erfolgreich ausgefÃƒÂ¼hrt werden:\n{%2}",
 'saved' => '"[%1]" wurde gespeichert.',
 'not_saved' => '"[%1]" konnte nicht gespeichert werden.',
 'symlinked' => 'Symbolischer Link von "[%2]" nach "[%1]" wurde erstellt.',
 'not_symlinked' => 'Symbolischer Link von "[%2]" nach "[%1]" konnte nicht erstellt werden.',
-'permission_for' => 'Rechte für "[%1]":',
-'permission_set' => 'Die Rechte für "[%1]" wurden auf [%2] gesetzt.',
-'permission_not_set' => 'Die Rechte für "[%1]" konnten nicht auf [%2] gesetzt werden.',
+'permission_for' => 'Rechte fÃƒÂ¼r "[%1]":',
+'permission_set' => 'Die Rechte fÃƒÂ¼r "[%1]" wurden auf [%2] gesetzt.',
+'permission_not_set' => 'Die Rechte fÃƒÂ¼r "[%1]" konnten nicht auf [%2] gesetzt werden.',
 'not_readable' => '"[%1]" kann nicht gelesen werden.'
     );
 
@@ -2425,34 +2425,34 @@ function getwords ($lang) {
     $date_format = 'd.m.y H:i:s';
 
     return array(
-'directory' => 'Répertoire',
+'directory' => 'RÃƒÂ©pertoire',
 'file' => 'Fichier',
 'filename' => 'Nom fichier',
 
 'size' => 'Taille',
 'permission' => 'Droits',
-'owner' => 'Propriétaire',
+'owner' => 'PropriÃƒÂ©taire',
 'group' => 'Groupe',
 'other' => 'Autres',
 'functions' => 'Fonctions',
 
 'read' => 'Lire',
 'write' => 'Ecrire',
-'execute' => 'Exécuter',
+'execute' => 'ExÃƒÂ©cuter',
 
-'create_symlink' => 'Créer lien symbolique',
+'create_symlink' => 'CrÃƒÂ©er lien symbolique',
 'delete' => 'Effacer',
 'rename' => 'Renommer',
-'move' => 'Déplacer',
+'move' => 'DÃƒÂ©placer',
 'copy' => 'Copier',
 'edit' => 'Ouvrir',
-'download' => 'Télécharger sur PC',
-'upload' => 'Télécharger sur serveur',
-'create' => 'Créer',
+'download' => 'TÃƒÂ©lÃƒÂ©charger sur PC',
+'upload' => 'TÃƒÂ©lÃƒÂ©charger sur serveur',
+'create' => 'CrÃƒÂ©er',
 'change' => 'Changer',
 'save' => 'Sauvegarder',
-'set' => 'Exécuter',
-'reset' => 'Réinitialiser',
+'set' => 'ExÃƒÂ©cuter',
+'reset' => 'RÃƒÂ©initialiser',
 'relative' => 'Relatif',
 
 'yes' => 'Oui',
@@ -2467,34 +2467,34 @@ function getwords ($lang) {
 'add' => 'Ajouter',
 'add_basic_auth' => 'add basic-authentification',
 
-'uploaded' => '"[%1]" a été téléchargé sur le serveur.',
-'not_uploaded' => '"[%1]" n a pas été téléchargé sur le serveur.',
-'already_exists' => '"[%1]" existe déjà.',
-'created' => '"[%1]" a été créé.',
-'not_created' => '"[%1]" n a pas pu être créé.',
+'uploaded' => '"[%1]" a ÃƒÂ©tÃƒÂ© tÃƒÂ©lÃƒÂ©chargÃƒÂ© sur le serveur.',
+'not_uploaded' => '"[%1]" n a pas ÃƒÂ©tÃƒÂ© tÃƒÂ©lÃƒÂ©chargÃƒÂ© sur le serveur.',
+'already_exists' => '"[%1]" existe dÃƒÂ©jÃƒÂ .',
+'created' => '"[%1]" a ÃƒÂ©tÃƒÂ© crÃƒÂ©ÃƒÂ©.',
+'not_created' => '"[%1]" n a pas pu ÃƒÂªtre crÃƒÂ©ÃƒÂ©.',
 'really_delete' => 'Effacer le fichier?',
-'deleted' => "Ces fichiers ont été détuits:\n[%1]",
-'not_deleted' => "Ces fichiers n ont pu être détruits:\n[%1]",
+'deleted' => "Ces fichiers ont ÃƒÂ©tÃƒÂ© dÃƒÂ©tuits:\n[%1]",
+'not_deleted' => "Ces fichiers n ont pu ÃƒÂªtre dÃƒÂ©truits:\n[%1]",
 'rename_file' => 'Renomme fichier:',
-'renamed' => '"[%1]" a été renommé en "[%2]".',
-'not_renamed' => '"[%1] n a pas pu être renommé en "[%2]".',
-'move_files' => 'Déplacer ces fichiers:',
-'moved' => "Ces fichiers ont été déplacés en \"[%2]\":\n[%1]",
-'not_moved' => "Ces fichiers n ont pas pu être déplacés en \"[%2]\":\n[%1]",
+'renamed' => '"[%1]" a ÃƒÂ©tÃƒÂ© renommÃƒÂ© en "[%2]".',
+'not_renamed' => '"[%1] n a pas pu ÃƒÂªtre renommÃƒÂ© en "[%2]".',
+'move_files' => 'DÃƒÂ©placer ces fichiers:',
+'moved' => "Ces fichiers ont ÃƒÂ©tÃƒÂ© dÃƒÂ©placÃƒÂ©s en \"[%2]\":\n[%1]",
+'not_moved' => "Ces fichiers n ont pas pu ÃƒÂªtre dÃƒÂ©placÃƒÂ©s en \"[%2]\":\n[%1]",
 'copy_files' => 'Copier ces fichiers:',
-'copied' => "Ces fichiers ont été copiés en \"[%2]\":\n[%1]",
-'not_copied' => "Ces fichiers n ont pas pu être copiés en \"[%2]\":\n[%1]",
-'not_edited' => '"[%1]" ne peut être ouvert.',
-'executed' => "\"[%1]\" a été brillamment exécuté :\n{%2}",
-'not_executed' => "\"[%1]\" n a pas pu être exécuté:\n{%2}",
-'saved' => '"[%1]" a été sauvegardé.',
-'not_saved' => '"[%1]" n a pas pu être sauvegardé.',
-'symlinked' => 'Un lien symbolique depuis "[%2]" vers "[%1]" a été crée.',
-'not_symlinked' => 'Un lien symbolique depuis "[%2]" vers "[%1]" n a pas pu être créé.',
+'copied' => "Ces fichiers ont ÃƒÂ©tÃƒÂ© copiÃƒÂ©s en \"[%2]\":\n[%1]",
+'not_copied' => "Ces fichiers n ont pas pu ÃƒÂªtre copiÃƒÂ©s en \"[%2]\":\n[%1]",
+'not_edited' => '"[%1]" ne peut ÃƒÂªtre ouvert.',
+'executed' => "\"[%1]\" a ÃƒÂ©tÃƒÂ© brillamment exÃƒÂ©cutÃƒÂ© :\n{%2}",
+'not_executed' => "\"[%1]\" n a pas pu ÃƒÂªtre exÃƒÂ©cutÃƒÂ©:\n{%2}",
+'saved' => '"[%1]" a ÃƒÂ©tÃƒÂ© sauvegardÃƒÂ©.',
+'not_saved' => '"[%1]" n a pas pu ÃƒÂªtre sauvegardÃƒÂ©.',
+'symlinked' => 'Un lien symbolique depuis "[%2]" vers "[%1]" a ÃƒÂ©tÃƒÂ© crÃƒÂ©e.',
+'not_symlinked' => 'Un lien symbolique depuis "[%2]" vers "[%1]" n a pas pu ÃƒÂªtre crÃƒÂ©ÃƒÂ©.',
 'permission_for' => 'Droits de "[%1]":',
-'permission_set' => 'Droits de "[%1]" ont été changés en [%2].',
-'permission_not_set' => 'Droits de "[%1]" n ont pas pu être changés en[%2].',
-'not_readable' => '"[%1]" ne peut pas être ouvert.'
+'permission_set' => 'Droits de "[%1]" ont ÃƒÂ©tÃƒÂ© changÃƒÂ©s en [%2].',
+'permission_not_set' => 'Droits de "[%1]" n ont pas pu ÃƒÂªtre changÃƒÂ©s en[%2].',
+'not_readable' => '"[%1]" ne peut pas ÃƒÂªtre ouvert.'
     );
 
   case 'it':
@@ -2544,34 +2544,34 @@ function getwords ($lang) {
 'add' => 'aggiungi',
 'add_basic_auth' => 'aggiungi autenticazione base',
 
-'uploaded' => '"[%1]" è stato caricato.',
-'not_uploaded' => '"[%1]" non è stato caricato.',
-'already_exists' => '"[%1]" esiste già.',
-'created' => '"[%1]" è stato creato.',
-'not_created' => '"[%1]" non è stato creato.',
+'uploaded' => '"[%1]" ÃƒÂ¨ stato caricato.',
+'not_uploaded' => '"[%1]" non ÃƒÂ¨ stato caricato.',
+'already_exists' => '"[%1]" esiste giÃƒÂ .',
+'created' => '"[%1]" ÃƒÂ¨ stato creato.',
+'not_created' => '"[%1]" non ÃƒÂ¨ stato creato.',
 'really_delete' => 'Cancello questi file ?',
 'deleted' => "Questi file sono stati cancellati:\n[%1]",
 'not_deleted' => "Questi file non possono essere cancellati:\n[%1]",
 'rename_file' => 'File rinominato:',
-'renamed' => '"[%1]" è stato rinominato in "[%2]".',
-'not_renamed' => '"[%1] non è stato rinominato in "[%2]".',
+'renamed' => '"[%1]" ÃƒÂ¨ stato rinominato in "[%2]".',
+'not_renamed' => '"[%1] non ÃƒÂ¨ stato rinominato in "[%2]".',
 'move_files' => 'Sposto questi file:',
 'moved' => "Questi file sono stati spostati in \"[%2]\":\n[%1]",
 'not_moved' => "Questi file non possono essere spostati in \"[%2]\":\n[%1]",
 'copy_files' => 'Copio questi file',
 'copied' => "Questi file sono stati copiati in \"[%2]\":\n[%1]",
 'not_copied' => "Questi file non possono essere copiati in \"[%2]\":\n[%1]",
-'not_edited' => '"[%1]" non può essere modificato.',
-'executed' => "\"[%1]\" è stato eseguito con successo:\n{%2}",
-'not_executed' => "\"[%1]\" non è stato eseguito con successo\n{%2}",
-'saved' => '"[%1]" è stato salvato.',
-'not_saved' => '"[%1]" non è stato salvato.',
-'symlinked' => 'Il link siambolico da "[%2]" a "[%1]" è stato creato.',
-'not_symlinked' => 'Il link siambolico da "[%2]" a "[%1]" non è stato creato.',
+'not_edited' => '"[%1]" non puÃƒÂ² essere modificato.',
+'executed' => "\"[%1]\" ÃƒÂ¨ stato eseguito con successo:\n{%2}",
+'not_executed' => "\"[%1]\" non ÃƒÂ¨ stato eseguito con successo\n{%2}",
+'saved' => '"[%1]" ÃƒÂ¨ stato salvato.',
+'not_saved' => '"[%1]" non ÃƒÂ¨ stato salvato.',
+'symlinked' => 'Il link siambolico da "[%2]" a "[%1]" ÃƒÂ¨ stato creato.',
+'not_symlinked' => 'Il link siambolico da "[%2]" a "[%1]" non ÃƒÂ¨ stato creato.',
 'permission_for' => 'Permessi di "[%1]":',
 'permission_set' => 'I permessi di "[%1]" sono stati impostati [%2].',
 'permission_not_set' => 'I permessi di "[%1]" non sono stati impostati [%2].',
-'not_readable' => '"[%1]" non può essere letto.'
+'not_readable' => '"[%1]" non puÃƒÂ² essere letto.'
     );
 
   case 'nl':
@@ -2661,29 +2661,29 @@ function getwords ($lang) {
 'filename' => 'Filnamn',
  
 'size' => 'Storlek',
-'permission' => 'Säkerhetsnivå',
-'owner' => 'Ägare',
+'permission' => 'SÃƒÂ¤kerhetsnivÃƒÂ¥',
+'owner' => 'Ãƒâ€žgare',
 'group' => 'Grupp',
 'other' => 'Andra',
 'functions' => 'Funktioner',
  
-'read' => 'Läs',
+'read' => 'LÃƒÂ¤s',
 'write' => 'Skriv',
-'execute' => 'Utför',
+'execute' => 'UtfÃƒÂ¶r',
  
 'create_symlink' => 'Skapa symlink',
 'delete' => 'Radera',
 'rename' => 'Byt namn',
 'move' => 'Flytta',
 'copy' => 'Kopiera',
-'edit' => 'Ändra',
+'edit' => 'Ãƒâ€žndra',
 'download' => 'Ladda ner',
 'upload' => 'Ladda upp',
 'create' => 'Skapa',
-'change' => 'Ändra',
+'change' => 'Ãƒâ€žndra',
 'save' => 'Spara',
 'set' => 'Markera',
-'reset' => 'Töm',
+'reset' => 'TÃƒÂ¶m',
 'relative' => 'Relative path to target',
  
 'yes' => 'Ja',
@@ -2693,9 +2693,9 @@ function getwords ($lang) {
 'symlink' => 'Symlink',
 'no_output' => 'no output',
  
-'user' => 'Användare',
-'password' => 'Lösenord',
-'add' => 'Lägg till',
+'user' => 'AnvÃƒÂ¤ndare',
+'password' => 'LÃƒÂ¶senord',
+'add' => 'LÃƒÂ¤gg till',
 'add_basic_auth' => 'add basic-authentification',
  
 'uploaded' => '"[%1]" har laddats upp.',
@@ -2704,28 +2704,28 @@ function getwords ($lang) {
 'created' => '"[%1]" har skapats.',
 'not_created' => '"[%1]" kunde inte skapas.',
 'really_delete' => 'Radera dessa filer?',
-'deleted' => "De här filerna har raderats:\n[%1]",
+'deleted' => "De hÃƒÂ¤r filerna har raderats:\n[%1]",
 'not_deleted' => "Dessa filer kunde inte raderas:\n[%1]",
-'rename_file' => 'Byt namn på fil:',
+'rename_file' => 'Byt namn pÃƒÂ¥ fil:',
 'renamed' => '"[%1]" har bytt namn till "[%2]".',
-'not_renamed' => '"[%1] kunde inte döpas om till "[%2]".',
+'not_renamed' => '"[%1] kunde inte dÃƒÂ¶pas om till "[%2]".',
 'move_files' => 'Flytta dessa filer:',
 'moved' => "Dessa filer har flyttats till \"[%2]\":\n[%1]",
 'not_moved' => "Dessa filer kunde inte flyttas till \"[%2]\":\n[%1]",
 'copy_files' => 'Kopiera dessa filer:',
 'copied' => "Dessa filer har kopierats till \"[%2]\":\n[%1]",
 'not_copied' => "Dessa filer kunde inte kopieras till \"[%2]\":\n[%1]",
-'not_edited' => '"[%1]" kan inte ändras.',
-'executed' => "\"[%1]\" har utförts:\n{%2}",
-'not_executed' => "\"[%1]\" kunde inte utföras:\n{%2}",
+'not_edited' => '"[%1]" kan inte ÃƒÂ¤ndras.',
+'executed' => "\"[%1]\" har utfÃƒÂ¶rts:\n{%2}",
+'not_executed' => "\"[%1]\" kunde inte utfÃƒÂ¶ras:\n{%2}",
 'saved' => '"[%1]" har sparats.',
 'not_saved' => '"[%1]" kunde inte sparas.',
-'symlinked' => 'Symlink från "[%2]" till "[%1]" har skapats.',
-'not_symlinked' => 'Symlink från "[%2]" till "[%1]" kunde inte skapas.',
-'permission_for' => 'Rättigheter för "[%1]":',
-'permission_set' => 'Rättigheter för "[%1]" ändrades till [%2].',
+'symlinked' => 'Symlink frÃƒÂ¥n "[%2]" till "[%1]" har skapats.',
+'not_symlinked' => 'Symlink frÃƒÂ¥n "[%2]" till "[%1]" kunde inte skapas.',
+'permission_for' => 'RÃƒÂ¤ttigheter fÃƒÂ¶r "[%1]":',
+'permission_set' => 'RÃƒÂ¤ttigheter fÃƒÂ¶r "[%1]" ÃƒÂ¤ndrades till [%2].',
 'permission_not_set' => 'Permission of "[%1]" could not be set to [%2].',
-'not_readable' => '"[%1]" kan inte läsas.'
+'not_readable' => '"[%1]" kan inte lÃƒÂ¤sas.'
     );
 
   case 'sp':
@@ -2737,7 +2737,7 @@ function getwords ($lang) {
 'file' => 'Archivo',
 'filename' => 'Nombre Archivo',
 
-'size' => 'Tamaño',
+'size' => 'TamaÃƒÂ±o',
 'permission' => 'Permisos',
 'owner' => 'Propietario',
 'group' => 'Grupo',
@@ -2746,7 +2746,7 @@ function getwords ($lang) {
 
 'read' => 'lectura',
 'write' => 'escritura',
-'execute' => 'ejecución',
+'execute' => 'ejecuciÃƒÂ³n',
 
 'create_symlink' => 'crear enlace',
 'delete' => 'borrar',
@@ -2765,7 +2765,7 @@ function getwords ($lang) {
 
 'yes' => 'Si',
 'no' => 'No',
-'back' => 'atrás',
+'back' => 'atrÃƒÂ¡s',
 'destination' => 'Destino',
 'symlink' => 'Enlace',
 'no_output' => 'sin salida',
@@ -2773,14 +2773,14 @@ function getwords ($lang) {
 'user' => 'Usuario',
 'password' => 'Clave',
 'add' => 'agregar',
-'add_basic_auth' => 'agregar autentificación básica',
+'add_basic_auth' => 'agregar autentificaciÃƒÂ³n bÃƒÂ¡sica',
 
 'uploaded' => '"[%1]" ha sido subido.',
 'not_uploaded' => '"[%1]" no pudo ser subido.',
 'already_exists' => '"[%1]" ya existe.',
 'created' => '"[%1]" ha sido creado.',
 'not_created' => '"[%1]" no pudo ser creado.',
-'really_delete' => '¿Borra estos archivos?',
+'really_delete' => 'Ã‚Â¿Borra estos archivos?',
 'deleted' => "Estos archivos han sido borrados:\n[%1]",
 'not_deleted' => "Estos archivos no pudieron ser borrados:\n[%1]",
 'rename_file' => 'Renombra archivo:',
@@ -2802,7 +2802,7 @@ function getwords ($lang) {
 'permission_for' => 'Permisos de "[%1]":',
 'permission_set' => 'Permisos de "[%1]" fueron seteados a [%2].',
 'permission_not_set' => 'Permisos de "[%1]" no pudo ser seteado a [%2].',
-'not_readable' => '"[%1]" no pudo ser leído.'
+'not_readable' => '"[%1]" no pudo ser leÃƒÂ­do.'
     );
 
   case 'dk':
@@ -2814,20 +2814,20 @@ function getwords ($lang) {
 'file' => 'Fil',
 'filename' => 'Filnavn',
 
-'size' => 'Størrelse',
+'size' => 'StÃƒÂ¸rrelse',
 'permission' => 'Rettighed',
 'owner' => 'Ejer',
 'group' => 'Gruppe',
 'other' => 'Andre',
 'functions' => 'Funktioner',
 
-'read' => 'læs',
+'read' => 'lÃƒÂ¦s',
 'write' => 'skriv',
-'execute' => 'kør',
+'execute' => 'kÃƒÂ¸r',
 
 'create_symlink' => 'opret symbolsk link',
 'delete' => 'slet',
-'rename' => 'omdøb',
+'rename' => 'omdÃƒÂ¸b',
 'move' => 'flyt',
 'copy' => 'kopier',
 'edit' => 'rediger',
@@ -2836,7 +2836,7 @@ function getwords ($lang) {
 'create' => 'opret',
 'change' => 'skift',
 'save' => 'gem',
-'set' => 'sæt',
+'set' => 'sÃƒÂ¦t',
 'reset' => 'nulstil',
 'relative' => 'Relativ sti til valg',
 
@@ -2849,8 +2849,8 @@ function getwords ($lang) {
 
 'user' => 'Bruger',
 'password' => 'Kodeord',
-'add' => 'tilføj',
-'add_basic_auth' => 'tilføj grundliggende rettigheder',
+'add' => 'tilfÃƒÂ¸j',
+'add_basic_auth' => 'tilfÃƒÂ¸j grundliggende rettigheder',
 
 'uploaded' => '"[%1]" er blevet uploaded.',
 'not_uploaded' => '"[%1]" kunnu ikke uploades.',
@@ -2860,9 +2860,9 @@ function getwords ($lang) {
 'really_delete' => 'Slet disse filer?',
 'deleted' => "Disse filer er blevet slettet:\n[%1]",
 'not_deleted' => "Disse filer kunne ikke slettes:\n[%1]",
-'rename_file' => 'Omdød fil:',
-'renamed' => '"[%1]" er blevet omdøbt til "[%2]".',
-'not_renamed' => '"[%1] kunne ikke omdøbes til "[%2]".',
+'rename_file' => 'OmdÃƒÂ¸d fil:',
+'renamed' => '"[%1]" er blevet omdÃƒÂ¸bt til "[%2]".',
+'not_renamed' => '"[%1] kunne ikke omdÃƒÂ¸bes til "[%2]".',
 'move_files' => 'Flyt disse filer:',
 'moved' => "Disse filer er blevet flyttet til \"[%2]\":\n[%1]",
 'not_moved' => "Disse filer kunne ikke flyttes til \"[%2]\":\n[%1]",
@@ -2870,16 +2870,16 @@ function getwords ($lang) {
 'copied' => "Disse filer er kopieret til \"[%2]\":\n[%1]",
 'not_copied' => "Disse filer kunne ikke kopieres til \"[%2]\":\n[%1]",
 'not_edited' => '"[%1]" kan ikke redigeres.',
-'executed' => "\"[%1]\" er blevet kørt korrekt:\n{%2}",
-'not_executed' => "\"[%1]\" kan ikke køres korrekt:\n{%2}",
+'executed' => "\"[%1]\" er blevet kÃƒÂ¸rt korrekt:\n{%2}",
+'not_executed' => "\"[%1]\" kan ikke kÃƒÂ¸res korrekt:\n{%2}",
 'saved' => '"[%1]" er blevet gemt.',
 'not_saved' => '"[%1]" kunne ikke gemmes.',
 'symlinked' => 'Symbolsk link fra "[%2]" til "[%1]" er blevet oprettet.',
 'not_symlinked' => 'Symbolsk link fra "[%2]" til "[%1]" kunne ikke oprettes.',
 'permission_for' => 'Rettigheder for "[%1]":',
 'permission_set' => 'Rettigheder for "[%1]" blev sat til [%2].',
-'permission_not_set' => 'Rettigheder for "[%1]" kunne ikke sættes til [%2].',
-'not_readable' => '"[%1]" Kan ikke læses.'
+'permission_not_set' => 'Rettigheder for "[%1]" kunne ikke sÃƒÂ¦ttes til [%2].',
+'not_readable' => '"[%1]" Kan ikke lÃƒÂ¦ses.'
     );
 
   case 'tr':
@@ -2887,7 +2887,7 @@ function getwords ($lang) {
     $date_format = 'n/j/y H:i:s';
 
     return array(
-'directory' => 'Klasör',
+'directory' => 'KlasÃƒÂ¶r',
 'file' => 'Dosya',
 'filename' => 'dosya adi',
 
@@ -2900,37 +2900,37 @@ function getwords ($lang) {
 
 'read' => 'oku',
 'write' => 'yaz',
-'execute' => 'çalistir',
+'execute' => 'ÃƒÂ§alistir',
 
 'create_symlink' => 'yarat symlink',
 'delete' => 'sil',
 'rename' => 'ad degistir',
 'move' => 'tasi',
 'copy' => 'kopyala',
-'edit' => 'düzenle',
+'edit' => 'dÃƒÂ¼zenle',
 'download' => 'indir',
-'upload' => 'yükle',
+'upload' => 'yÃƒÂ¼kle',
 'create' => 'create',
 'change' => 'degistir',
 'save' => 'kaydet',
 'set' => 'ayar',
 'reset' => 'sifirla',
-'relative' => 'Hedef yola göre',
+'relative' => 'Hedef yola gÃƒÂ¶re',
 
 'yes' => 'Evet',
 'no' => 'Hayir',
 'back' => 'Geri',
 'destination' => 'Hedef',
-'symlink' => 'Kýsa yol',
-'no_output' => 'çikti yok',
+'symlink' => 'KÃƒÂ½sa yol',
+'no_output' => 'ÃƒÂ§ikti yok',
 
 'user' => 'Kullanici',
 'password' => 'Sifre',
 'add' => 'ekle',
 'add_basic_auth' => 'ekle basit-authentification',
 
-'uploaded' => '"[%1]" yüklendi.',
-'not_uploaded' => '"[%1]" yüklenemedi.',
+'uploaded' => '"[%1]" yÃƒÂ¼klendi.',
+'not_uploaded' => '"[%1]" yÃƒÂ¼klenemedi.',
 'already_exists' => '"[%1]" kullanilmakta.',
 'created' => '"[%1]" olusturuldu.',
 'not_created' => '"[%1]" olusturulamadi.',
@@ -2946,13 +2946,13 @@ function getwords ($lang) {
 'copy_files' => 'Kopyalanan dosyalar:',
 'copied' => "Bu dosyalar kopyalandi \"[%2]\":\n[%1]",
 'not_copied' => "Bu dosyalar kopyalanamiyor \"[%2]\":\n[%1]",
-'not_edited' => '"[%1]" düzenlenemiyor.',
-'executed' => "\"[%1]\" basariyla çalistirildi:\n{%2}",
-'not_executed' => "\"[%1]\" çalistirilamadi:\n{%2}",
+'not_edited' => '"[%1]" dÃƒÂ¼zenlenemiyor.',
+'executed' => "\"[%1]\" basariyla ÃƒÂ§alistirildi:\n{%2}",
+'not_executed' => "\"[%1]\" ÃƒÂ§alistirilamadi:\n{%2}",
 'saved' => '"[%1]" kaydedildi.',
 'not_saved' => '"[%1]" kaydedilemedi.',
-'symlinked' => '"[%2]" den "[%1]" e kýsayol oluþturuldu.',
-'not_symlinked' => '"[%2]"den "[%1]" e kýsayol oluþturulamadý.',
+'symlinked' => '"[%2]" den "[%1]" e kÃƒÂ½sayol oluÃƒÂ¾turuldu.',
+'not_symlinked' => '"[%2]"den "[%1]" e kÃƒÂ½sayol oluÃƒÂ¾turulamadÃƒÂ½.',
 'permission_for' => 'Izinler "[%1]":',
 'permission_set' => 'Izinler "[%1]" degistirildi [%2].',
 'permission_not_set' => 'Izinler "[%1]" degistirilemedi [%2].',
@@ -2964,76 +2964,76 @@ function getwords ($lang) {
     $date_format = 'd.m.y H:i:s';
 
     return array(
-'directory' => 'Adresář',
+'directory' => 'AdresÃƒÂ¡Ã…â„¢',
 'file' => 'Soubor',
-'filename' => 'Jméno souboru',
+'filename' => 'JmÃƒÂ©no souboru',
 
 'size' => 'Velikost',
-'permission' => 'Práva',
-'owner' => 'Vlastník',
+'permission' => 'PrÃƒÂ¡va',
+'owner' => 'VlastnÃƒÂ­k',
 'group' => 'Skupina',
-'other' => 'Ostatní',
+'other' => 'OstatnÃƒÂ­',
 'functions' => 'Funkce',
 
-'read' => 'Čtení',
-'write' => 'Zápis',
-'execute' => 'Spouštění',
+'read' => 'Ã„Å’tenÃƒÂ­',
+'write' => 'ZÃƒÂ¡pis',
+'execute' => 'SpouÃ…Â¡tÃ„â€ºnÃƒÂ­',
 
-'create_symlink' => 'Vytvořit symbolický odkaz',
+'create_symlink' => 'VytvoÃ…â„¢it symbolickÃƒÂ½ odkaz',
 'delete' => 'Smazat',
-'rename' => 'Přejmenovat',
-'move' => 'Přesunout',
-'copy' => 'Zkopírovat',
-'edit' => 'Otevřít',
-'download' => 'Stáhnout',
+'rename' => 'PÃ…â„¢ejmenovat',
+'move' => 'PÃ…â„¢esunout',
+'copy' => 'ZkopÃƒÂ­rovat',
+'edit' => 'OtevÃ…â„¢ÃƒÂ­t',
+'download' => 'StÃƒÂ¡hnout',
 'upload' => 'Nahraj na server',
-'create' => 'Vytvořit',
-'change' => 'Změnit',
-'save' => 'Uložit',
+'create' => 'VytvoÃ…â„¢it',
+'change' => 'ZmÃ„â€ºnit',
+'save' => 'UloÃ…Â¾it',
 'set' => 'Nastavit',
-'reset' => 'zpět',
+'reset' => 'zpÃ„â€ºt',
 'relative' => 'Relatif',
 
 'yes' => 'Ano',
 'no' => 'Ne',
-'back' => 'Zpět',
+'back' => 'ZpÃ„â€ºt',
 'destination' => 'Destination',
-'symlink' => 'Symbolický odkaz',
-'no_output' => 'Prázdný výstup',
+'symlink' => 'SymbolickÃƒÂ½ odkaz',
+'no_output' => 'PrÃƒÂ¡zdnÃƒÂ½ vÃƒÂ½stup',
 
-'user' => 'Uživatel',
+'user' => 'UÃ…Â¾ivatel',
 'password' => 'Heslo',
-'add' => 'Přidat',
-'add_basic_auth' => 'přidej základní autentizaci',
+'add' => 'PÃ…â„¢idat',
+'add_basic_auth' => 'pÃ…â„¢idej zÃƒÂ¡kladnÃƒÂ­ autentizaci',
 
-'uploaded' => 'Soubor "[%1]" byl nahrán na server.',
-'not_uploaded' => 'Soubor "[%1]" nebyl nahrán na server.',
-'already_exists' => 'Soubor "[%1]" už exituje.',
-'created' => 'Soubor "[%1]" byl vytvořen.',
-'not_created' => 'Soubor "[%1]" nemohl být  vytvořen.',
+'uploaded' => 'Soubor "[%1]" byl nahrÃƒÂ¡n na server.',
+'not_uploaded' => 'Soubor "[%1]" nebyl nahrÃƒÂ¡n na server.',
+'already_exists' => 'Soubor "[%1]" uÃ…Â¾ exituje.',
+'created' => 'Soubor "[%1]" byl vytvoÃ…â„¢en.',
+'not_created' => 'Soubor "[%1]" nemohl bÃƒÂ½t  vytvoÃ…â„¢en.',
 'really_delete' => 'Vymazat soubor?',
-'deleted' => "Byly vymazány tyto soubory:\n[%1]",
-'not_deleted' => "Tyto soubory nemohly být vytvořeny:\n[%1]",
-'rename_file' => 'Přejmenuj soubory:',
-'renamed' => 'Soubor "[%1]" byl přejmenován na "[%2]".',
-'not_renamed' => 'Soubor "[%1]" nemohl být přejmenován na "[%2]".',
-'move_files' => 'Přemístit tyto soubory:',
-'moved' => "Tyto soubory byly přemístěny do \"[%2]\":\n[%1]",
-'not_moved' => "Tyto soubory nemohly být přemístěny do \"[%2]\":\n[%1]",
-'copy_files' => 'Zkopírovat tyto soubory:',
-'copied' => "Tyto soubory byly zkopírovány do \"[%2]\":\n[%1]",
-'not_copied' => "Tyto soubory nemohly být zkopírovány do \"[%2]\":\n[%1]",
-'not_edited' => 'Soubor "[%1]" nemohl být otevřen.',
-'executed' => "SOubor \"[%1]\" byl spuštěn :\n{%2}",
-'not_executed' => "Soubor \"[%1]\" nemohl být spuštěn:\n{%2}",
-'saved' => 'Soubor "[%1]" byl uložen.',
-'not_saved' => 'Soubor "[%1]" nemohl být uložen.',
-'symlinked' => 'Byl vyvořen symbolický odkaz "[%2]" na soubor "[%1]".',
-'not_symlinked' => 'Symbolický odkaz "[%2]" na soubor "[%1]" nemohl být vytvořen.',
-'permission_for' => 'Práva k "[%1]":',
-'permission_set' => 'Práva k "[%1]" byla změněna na [%2].',
-'permission_not_set' => 'Práva k "[%1]" nemohla být změněna na [%2].',
-'not_readable' => 'Soubor "[%1]" není možno přečíst.'
+'deleted' => "Byly vymazÃƒÂ¡ny tyto soubory:\n[%1]",
+'not_deleted' => "Tyto soubory nemohly bÃƒÂ½t vytvoÃ…â„¢eny:\n[%1]",
+'rename_file' => 'PÃ…â„¢ejmenuj soubory:',
+'renamed' => 'Soubor "[%1]" byl pÃ…â„¢ejmenovÃƒÂ¡n na "[%2]".',
+'not_renamed' => 'Soubor "[%1]" nemohl bÃƒÂ½t pÃ…â„¢ejmenovÃƒÂ¡n na "[%2]".',
+'move_files' => 'PÃ…â„¢emÃƒÂ­stit tyto soubory:',
+'moved' => "Tyto soubory byly pÃ…â„¢emÃƒÂ­stÃ„â€ºny do \"[%2]\":\n[%1]",
+'not_moved' => "Tyto soubory nemohly bÃƒÂ½t pÃ…â„¢emÃƒÂ­stÃ„â€ºny do \"[%2]\":\n[%1]",
+'copy_files' => 'ZkopÃƒÂ­rovat tyto soubory:',
+'copied' => "Tyto soubory byly zkopÃƒÂ­rovÃƒÂ¡ny do \"[%2]\":\n[%1]",
+'not_copied' => "Tyto soubory nemohly bÃƒÂ½t zkopÃƒÂ­rovÃƒÂ¡ny do \"[%2]\":\n[%1]",
+'not_edited' => 'Soubor "[%1]" nemohl bÃƒÂ½t otevÃ…â„¢en.',
+'executed' => "SOubor \"[%1]\" byl spuÃ…Â¡tÃ„â€ºn :\n{%2}",
+'not_executed' => "Soubor \"[%1]\" nemohl bÃƒÂ½t spuÃ…Â¡tÃ„â€ºn:\n{%2}",
+'saved' => 'Soubor "[%1]" byl uloÃ…Â¾en.',
+'not_saved' => 'Soubor "[%1]" nemohl bÃƒÂ½t uloÃ…Â¾en.',
+'symlinked' => 'Byl vyvoÃ…â„¢en symbolickÃƒÂ½ odkaz "[%2]" na soubor "[%1]".',
+'not_symlinked' => 'SymbolickÃƒÂ½ odkaz "[%2]" na soubor "[%1]" nemohl bÃƒÂ½t vytvoÃ…â„¢en.',
+'permission_for' => 'PrÃƒÂ¡va k "[%1]":',
+'permission_set' => 'PrÃƒÂ¡va k "[%1]" byla zmÃ„â€ºnÃ„â€ºna na [%2].',
+'permission_not_set' => 'PrÃƒÂ¡va k "[%1]" nemohla bÃƒÂ½t zmÃ„â€ºnÃ„â€ºna na [%2].',
+'not_readable' => 'Soubor "[%1]" nenÃƒÂ­ moÃ…Â¾no pÃ…â„¢eÃ„ï¿½ÃƒÂ­st.'
     );
 
   case 'ru':
@@ -3041,76 +3041,76 @@ function getwords ($lang) {
     $date_format = 'd.m.y H:i:s';
 
     return array(
-'directory' => 'Каталог',
-'file' => 'Файл',
-'filename' => 'Имя файла',
+'directory' => 'ÃÅ¡ÃÂ°Ã‘â€šÃÂ°ÃÂ»ÃÂ¾ÃÂ³',
+'file' => 'ÃÂ¤ÃÂ°ÃÂ¹ÃÂ»',
+'filename' => 'ÃËœÃÂ¼Ã‘ï¿½ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»ÃÂ°',
 
-'size' => 'Размер',
-'permission' => 'Права',
-'owner' => 'Хозяин',
-'group' => 'Группа',
-'other' => 'Другие',
-'functions' => 'Функция',
+'size' => 'ÃÂ ÃÂ°ÃÂ·ÃÂ¼ÃÂµÃ‘â‚¬',
+'permission' => 'ÃÅ¸Ã‘â‚¬ÃÂ°ÃÂ²ÃÂ°',
+'owner' => 'ÃÂ¥ÃÂ¾ÃÂ·Ã‘ï¿½ÃÂ¸ÃÂ½',
+'group' => 'Ãâ€œÃ‘â‚¬Ã‘Æ’ÃÂ¿ÃÂ¿ÃÂ°',
+'other' => 'Ãâ€Ã‘â‚¬Ã‘Æ’ÃÂ³ÃÂ¸ÃÂµ',
+'functions' => 'ÃÂ¤Ã‘Æ’ÃÂ½ÃÂºÃ‘â€ ÃÂ¸Ã‘ï¿½',
 
-'read' => 'читать',
-'write' => 'писать',
-'execute' => 'выполнить',
+'read' => 'Ã‘â€¡ÃÂ¸Ã‘â€šÃÂ°Ã‘â€šÃ‘Å’',
+'write' => 'ÃÂ¿ÃÂ¸Ã‘ï¿½ÃÂ°Ã‘â€šÃ‘Å’',
+'execute' => 'ÃÂ²Ã‘â€¹ÃÂ¿ÃÂ¾ÃÂ»ÃÂ½ÃÂ¸Ã‘â€šÃ‘Å’',
 
-'create_symlink' => 'Сделать симлинк',
-'delete' => 'удалить',
-'rename' => 'переименовать',
-'move' => 'передвинуть',
-'copy' => 'копировать',
-'edit' => 'редактировать',
-'download' => 'скачать',
-'upload' => 'закачать',
-'create' => 'сделать',
-'change' => 'поменять',
-'save' => 'сохранить',
-'set' => 'установить',
-'reset' => 'сбросить',
-'relative' => 'относительный путь к цели',
+'create_symlink' => 'ÃÂ¡ÃÂ´ÃÂµÃÂ»ÃÂ°Ã‘â€šÃ‘Å’ Ã‘ï¿½ÃÂ¸ÃÂ¼ÃÂ»ÃÂ¸ÃÂ½ÃÂº',
+'delete' => 'Ã‘Æ’ÃÂ´ÃÂ°ÃÂ»ÃÂ¸Ã‘â€šÃ‘Å’',
+'rename' => 'ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ¸ÃÂ¼ÃÂµÃÂ½ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃ‘Å’',
+'move' => 'ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ´ÃÂ²ÃÂ¸ÃÂ½Ã‘Æ’Ã‘â€šÃ‘Å’',
+'copy' => 'ÃÂºÃÂ¾ÃÂ¿ÃÂ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃ‘Å’',
+'edit' => 'Ã‘â‚¬ÃÂµÃÂ´ÃÂ°ÃÂºÃ‘â€šÃÂ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃ‘Å’',
+'download' => 'Ã‘ï¿½ÃÂºÃÂ°Ã‘â€¡ÃÂ°Ã‘â€šÃ‘Å’',
+'upload' => 'ÃÂ·ÃÂ°ÃÂºÃÂ°Ã‘â€¡ÃÂ°Ã‘â€šÃ‘Å’',
+'create' => 'Ã‘ï¿½ÃÂ´ÃÂµÃÂ»ÃÂ°Ã‘â€šÃ‘Å’',
+'change' => 'ÃÂ¿ÃÂ¾ÃÂ¼ÃÂµÃÂ½Ã‘ï¿½Ã‘â€šÃ‘Å’',
+'save' => 'Ã‘ï¿½ÃÂ¾Ã‘â€¦Ã‘â‚¬ÃÂ°ÃÂ½ÃÂ¸Ã‘â€šÃ‘Å’',
+'set' => 'Ã‘Æ’Ã‘ï¿½Ã‘â€šÃÂ°ÃÂ½ÃÂ¾ÃÂ²ÃÂ¸Ã‘â€šÃ‘Å’',
+'reset' => 'Ã‘ï¿½ÃÂ±Ã‘â‚¬ÃÂ¾Ã‘ï¿½ÃÂ¸Ã‘â€šÃ‘Å’',
+'relative' => 'ÃÂ¾Ã‘â€šÃÂ½ÃÂ¾Ã‘ï¿½ÃÂ¸Ã‘â€šÃÂµÃÂ»Ã‘Å’ÃÂ½Ã‘â€¹ÃÂ¹ ÃÂ¿Ã‘Æ’Ã‘â€šÃ‘Å’ ÃÂº Ã‘â€ ÃÂµÃÂ»ÃÂ¸',
 
-'yes' => 'да',
-'no' => 'нет',
-'back' => 'назад',
-'destination' => 'цель',
-'symlink' => 'символический линк',
-'no_output' => 'нет вывода',
+'yes' => 'ÃÂ´ÃÂ°',
+'no' => 'ÃÂ½ÃÂµÃ‘â€š',
+'back' => 'ÃÂ½ÃÂ°ÃÂ·ÃÂ°ÃÂ´',
+'destination' => 'Ã‘â€ ÃÂµÃÂ»Ã‘Å’',
+'symlink' => 'Ã‘ï¿½ÃÂ¸ÃÂ¼ÃÂ²ÃÂ¾ÃÂ»ÃÂ¸Ã‘â€¡ÃÂµÃ‘ï¿½ÃÂºÃÂ¸ÃÂ¹ ÃÂ»ÃÂ¸ÃÂ½ÃÂº',
+'no_output' => 'ÃÂ½ÃÂµÃ‘â€š ÃÂ²Ã‘â€¹ÃÂ²ÃÂ¾ÃÂ´ÃÂ°',
 
-'user' => 'Пользователь',
-'password' => 'Пароль',
-'add' => 'добавить',
-'add_basic_auth' => 'Добавить HTTP-Basic-Auth',
+'user' => 'ÃÅ¸ÃÂ¾ÃÂ»Ã‘Å’ÃÂ·ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃÂµÃÂ»Ã‘Å’',
+'password' => 'ÃÅ¸ÃÂ°Ã‘â‚¬ÃÂ¾ÃÂ»Ã‘Å’',
+'add' => 'ÃÂ´ÃÂ¾ÃÂ±ÃÂ°ÃÂ²ÃÂ¸Ã‘â€šÃ‘Å’',
+'add_basic_auth' => 'Ãâ€ÃÂ¾ÃÂ±ÃÂ°ÃÂ²ÃÂ¸Ã‘â€šÃ‘Å’ HTTP-Basic-Auth',
 
-'uploaded' => '"[%1]" был закачен.',
-'not_uploaded' => '"[%1]" невозможно было закачять.',
-'already_exists' => '"[%1]" уже существует.',
-'created' => '"[%1]" был сделан.',
-'not_created' => '"[%1]" не возможно сделать.',
-'really_delete' => 'Действительно этот файл удалить?',
-'deleted' => "Следующие файлы были удалены:\n[%1]",
-'not_deleted' => "Следующие файлы не возможно было удалить:\n[%1]",
-'rename_file' => 'Переименовываю файл:',
-'renamed' => '"[%1]" был переименован на "[%2]".',
-'not_renamed' => '"[%1] невозможно было переименовать на "[%2]".',
-'move_files' => 'Передвигаю следующие файлы:',
-'moved' => "Следующие файлы были передвинуты в каталог \"[%2]\":\n[%1]",
-'not_moved' => "Следующие файлы невозможно было передвинуть в каталог \"[%2]\":\n[%1]",
-'copy_files' => 'Копирую следущие файлы:',
-'copied' => "Следущие файлы былы скопированы в каталог \"[%2]\" :\n[%1]",
-'not_copied' => "Следующие файлы невозможно было скопировать в каталог \"[%2]\" :\n[%1]",
-'not_edited' => '"[%1]" не может быть отредактирован.',
-'executed' => "\"[%1]\" был успешно исполнен:\n{%2}",
-'not_executed' => "\"[%1]\" невозможно было запустить на исполнение:\n{%2}",
-'saved' => '"[%1]" был сохранен.',
-'not_saved' => '"[%1]" невозможно было сохранить.',
-'symlinked' => 'Симлинк с "[%2]" на "[%1]" был сделан.',
-'not_symlinked' => 'Невозможно было сделать симлинк с "[%2]" на "[%1]".',
-'permission_for' => 'Права доступа "[%1]":',
-'permission_set' => 'Права доступа "[%1]" были изменены на [%2].',
-'permission_not_set' => 'Невозможно было изменить права доступа к "[%1]" на [%2] .',
-'not_readable' => '"[%1]" невозможно прочитать.'
+'uploaded' => '"[%1]" ÃÂ±Ã‘â€¹ÃÂ» ÃÂ·ÃÂ°ÃÂºÃÂ°Ã‘â€¡ÃÂµÃÂ½.',
+'not_uploaded' => '"[%1]" ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ ÃÂ·ÃÂ°ÃÂºÃÂ°Ã‘â€¡Ã‘ï¿½Ã‘â€šÃ‘Å’.',
+'already_exists' => '"[%1]" Ã‘Æ’ÃÂ¶ÃÂµ Ã‘ï¿½Ã‘Æ’Ã‘â€°ÃÂµÃ‘ï¿½Ã‘â€šÃÂ²Ã‘Æ’ÃÂµÃ‘â€š.',
+'created' => '"[%1]" ÃÂ±Ã‘â€¹ÃÂ» Ã‘ï¿½ÃÂ´ÃÂµÃÂ»ÃÂ°ÃÂ½.',
+'not_created' => '"[%1]" ÃÂ½ÃÂµ ÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ Ã‘ï¿½ÃÂ´ÃÂµÃÂ»ÃÂ°Ã‘â€šÃ‘Å’.',
+'really_delete' => 'Ãâ€ÃÂµÃÂ¹Ã‘ï¿½Ã‘â€šÃÂ²ÃÂ¸Ã‘â€šÃÂµÃÂ»Ã‘Å’ÃÂ½ÃÂ¾ Ã‘ï¿½Ã‘â€šÃÂ¾Ã‘â€š Ã‘â€žÃÂ°ÃÂ¹ÃÂ» Ã‘Æ’ÃÂ´ÃÂ°ÃÂ»ÃÂ¸Ã‘â€šÃ‘Å’?',
+'deleted' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¸ Ã‘Æ’ÃÂ´ÃÂ°ÃÂ»ÃÂµÃÂ½Ã‘â€¹:\n[%1]",
+'not_deleted' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ½ÃÂµ ÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ Ã‘Æ’ÃÂ´ÃÂ°ÃÂ»ÃÂ¸Ã‘â€šÃ‘Å’:\n[%1]",
+'rename_file' => 'ÃÅ¸ÃÂµÃ‘â‚¬ÃÂµÃÂ¸ÃÂ¼ÃÂµÃÂ½ÃÂ¾ÃÂ²Ã‘â€¹ÃÂ²ÃÂ°Ã‘Å½ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»:',
+'renamed' => '"[%1]" ÃÂ±Ã‘â€¹ÃÂ» ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ¸ÃÂ¼ÃÂµÃÂ½ÃÂ¾ÃÂ²ÃÂ°ÃÂ½ ÃÂ½ÃÂ° "[%2]".',
+'not_renamed' => '"[%1] ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ¸ÃÂ¼ÃÂµÃÂ½ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃ‘Å’ ÃÂ½ÃÂ° "[%2]".',
+'move_files' => 'ÃÅ¸ÃÂµÃ‘â‚¬ÃÂµÃÂ´ÃÂ²ÃÂ¸ÃÂ³ÃÂ°Ã‘Å½ Ã‘ï¿½ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹:',
+'moved' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¸ ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ´ÃÂ²ÃÂ¸ÃÂ½Ã‘Æ’Ã‘â€šÃ‘â€¹ ÃÂ² ÃÂºÃÂ°Ã‘â€šÃÂ°ÃÂ»ÃÂ¾ÃÂ³ \"[%2]\":\n[%1]",
+'not_moved' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ ÃÂ¿ÃÂµÃ‘â‚¬ÃÂµÃÂ´ÃÂ²ÃÂ¸ÃÂ½Ã‘Æ’Ã‘â€šÃ‘Å’ ÃÂ² ÃÂºÃÂ°Ã‘â€šÃÂ°ÃÂ»ÃÂ¾ÃÂ³ \"[%2]\":\n[%1]",
+'copy_files' => 'ÃÅ¡ÃÂ¾ÃÂ¿ÃÂ¸Ã‘â‚¬Ã‘Æ’Ã‘Å½ Ã‘ï¿½ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹:',
+'copied' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ±Ã‘â€¹ÃÂ»Ã‘â€¹ Ã‘ï¿½ÃÂºÃÂ¾ÃÂ¿ÃÂ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂ°ÃÂ½Ã‘â€¹ ÃÂ² ÃÂºÃÂ°Ã‘â€šÃÂ°ÃÂ»ÃÂ¾ÃÂ³ \"[%2]\" :\n[%1]",
+'not_copied' => "ÃÂ¡ÃÂ»ÃÂµÃÂ´Ã‘Æ’Ã‘Å½Ã‘â€°ÃÂ¸ÃÂµ Ã‘â€žÃÂ°ÃÂ¹ÃÂ»Ã‘â€¹ ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ Ã‘ï¿½ÃÂºÃÂ¾ÃÂ¿ÃÂ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂ°Ã‘â€šÃ‘Å’ ÃÂ² ÃÂºÃÂ°Ã‘â€šÃÂ°ÃÂ»ÃÂ¾ÃÂ³ \"[%2]\" :\n[%1]",
+'not_edited' => '"[%1]" ÃÂ½ÃÂµ ÃÂ¼ÃÂ¾ÃÂ¶ÃÂµÃ‘â€š ÃÂ±Ã‘â€¹Ã‘â€šÃ‘Å’ ÃÂ¾Ã‘â€šÃ‘â‚¬ÃÂµÃÂ´ÃÂ°ÃÂºÃ‘â€šÃÂ¸Ã‘â‚¬ÃÂ¾ÃÂ²ÃÂ°ÃÂ½.',
+'executed' => "\"[%1]\" ÃÂ±Ã‘â€¹ÃÂ» Ã‘Æ’Ã‘ï¿½ÃÂ¿ÃÂµÃ‘Ë†ÃÂ½ÃÂ¾ ÃÂ¸Ã‘ï¿½ÃÂ¿ÃÂ¾ÃÂ»ÃÂ½ÃÂµÃÂ½:\n{%2}",
+'not_executed' => "\"[%1]\" ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ ÃÂ·ÃÂ°ÃÂ¿Ã‘Æ’Ã‘ï¿½Ã‘â€šÃÂ¸Ã‘â€šÃ‘Å’ ÃÂ½ÃÂ° ÃÂ¸Ã‘ï¿½ÃÂ¿ÃÂ¾ÃÂ»ÃÂ½ÃÂµÃÂ½ÃÂ¸ÃÂµ:\n{%2}",
+'saved' => '"[%1]" ÃÂ±Ã‘â€¹ÃÂ» Ã‘ï¿½ÃÂ¾Ã‘â€¦Ã‘â‚¬ÃÂ°ÃÂ½ÃÂµÃÂ½.',
+'not_saved' => '"[%1]" ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ Ã‘ï¿½ÃÂ¾Ã‘â€¦Ã‘â‚¬ÃÂ°ÃÂ½ÃÂ¸Ã‘â€šÃ‘Å’.',
+'symlinked' => 'ÃÂ¡ÃÂ¸ÃÂ¼ÃÂ»ÃÂ¸ÃÂ½ÃÂº Ã‘ï¿½ "[%2]" ÃÂ½ÃÂ° "[%1]" ÃÂ±Ã‘â€¹ÃÂ» Ã‘ï¿½ÃÂ´ÃÂµÃÂ»ÃÂ°ÃÂ½.',
+'not_symlinked' => 'Ãï¿½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ Ã‘ï¿½ÃÂ´ÃÂµÃÂ»ÃÂ°Ã‘â€šÃ‘Å’ Ã‘ï¿½ÃÂ¸ÃÂ¼ÃÂ»ÃÂ¸ÃÂ½ÃÂº Ã‘ï¿½ "[%2]" ÃÂ½ÃÂ° "[%1]".',
+'permission_for' => 'ÃÅ¸Ã‘â‚¬ÃÂ°ÃÂ²ÃÂ° ÃÂ´ÃÂ¾Ã‘ï¿½Ã‘â€šÃ‘Æ’ÃÂ¿ÃÂ° "[%1]":',
+'permission_set' => 'ÃÅ¸Ã‘â‚¬ÃÂ°ÃÂ²ÃÂ° ÃÂ´ÃÂ¾Ã‘ï¿½Ã‘â€šÃ‘Æ’ÃÂ¿ÃÂ° "[%1]" ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¸ ÃÂ¸ÃÂ·ÃÂ¼ÃÂµÃÂ½ÃÂµÃÂ½Ã‘â€¹ ÃÂ½ÃÂ° [%2].',
+'permission_not_set' => 'Ãï¿½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ±Ã‘â€¹ÃÂ»ÃÂ¾ ÃÂ¸ÃÂ·ÃÂ¼ÃÂµÃÂ½ÃÂ¸Ã‘â€šÃ‘Å’ ÃÂ¿Ã‘â‚¬ÃÂ°ÃÂ²ÃÂ° ÃÂ´ÃÂ¾Ã‘ï¿½Ã‘â€šÃ‘Æ’ÃÂ¿ÃÂ° ÃÂº "[%1]" ÃÂ½ÃÂ° [%2] .',
+'not_readable' => '"[%1]" ÃÂ½ÃÂµÃÂ²ÃÂ¾ÃÂ·ÃÂ¼ÃÂ¾ÃÂ¶ÃÂ½ÃÂ¾ ÃÂ¿Ã‘â‚¬ÃÂ¾Ã‘â€¡ÃÂ¸Ã‘â€šÃÂ°Ã‘â€šÃ‘Å’.'
     );
 
   case 'pl':
@@ -3123,7 +3123,7 @@ function getwords ($lang) {
 'filename' => 'Nazwa pliku',
 'size' => 'Rozmiar',
 'permission' => 'Uprawnienia',
-'owner' => 'Właściciel',
+'owner' => 'WÃ…â€šaÃ…â€ºciciel',
 'group' => 'Grupa',
 'other' => 'Inni',
 'functions' => 'Funkcje',
@@ -3132,61 +3132,61 @@ function getwords ($lang) {
 'write' => 'zapis',
 'execute' => 'wykonywanie',
 
-'create_symlink' => 'utwórz dowiązanie symboliczne',
+'create_symlink' => 'utwÃƒÂ³rz dowiÃ„â€¦zanie symboliczne',
 'delete' => 'kasuj',
-'rename' => 'zamień',
-'move' => 'przenieś',
+'rename' => 'zamieÃ…â€ž',
+'move' => 'przenieÃ…â€º',
 'copy' => 'kopiuj',
 'edit' => 'edytuj',
 'download' => 'pobierz',
-'upload' => 'Prześlij',
-'create' => 'Utwórz',
-'change' => 'Zmień',
+'upload' => 'PrzeÃ…â€ºlij',
+'create' => 'UtwÃƒÂ³rz',
+'change' => 'ZmieÃ…â€ž',
 'save' => 'Zapisz',
 'set' => 'wykonaj',
-'reset' => 'wyczyść',
-'relative' => 'względna ścieżka do celu',
+'reset' => 'wyczyÃ…â€ºÃ„â€¡',
+'relative' => 'wzglÃ„â„¢dna Ã…â€ºcieÃ…Â¼ka do celu',
 
 'yes' => 'Tak',
 'no' => 'Nie',
 'back' => 'cofnij',
 'destination' => 'miejsce przeznaczenia',
-'symlink' => 'dowiązanie symboliczne',
-'no_output' => 'nie ma wyjścia',
+'symlink' => 'dowiÃ„â€¦zanie symboliczne',
+'no_output' => 'nie ma wyjÃ…â€ºcia',
 
 'user' => 'Urzytkownik',
-'password' => 'Hasło',
+'password' => 'HasÃ…â€šo',
 'add' => 'dodaj',
 'add_basic_auth' => 'dodaj podstawowe uwierzytelnianie',
 
-'uploaded' => '"[%1]" został przesłany.',
-'not_uploaded' => '"[%1]" nie może być przesłane.',
-'already_exists' => '"[%1]" już istnieje.',
-'created' => '"[%1]" został utworzony.',
-'not_created' => '"[%1]" nie można utworzyć.',
-'really_delete' => 'usunąć te pliki?',
-'deleted' => "Pliki zostały usunięte:\n[%1]",
-'not_deleted' => "Te pliki nie mogą być usunięte:\n[%1]",
-'rename_file' => 'Zmień nazwę pliku:',
-'renamed' => '"[%1]" zostało zmienione na "[%2]".',
-'not_renamed' => '"[%1] nie można zmienić na "[%2]".',
-'move_files' => 'Przenieś te pliki:',
-'moved' => "Pliki zostały przeniesione do \"[%2]\":\n[%1]",
-'not_moved' => "Pliki nie mogą być przeniesione do \"[%2]\":\n[%1]",
+'uploaded' => '"[%1]" zostaÃ…â€š przesÃ…â€šany.',
+'not_uploaded' => '"[%1]" nie moÃ…Â¼e byÃ„â€¡ przesÃ…â€šane.',
+'already_exists' => '"[%1]" juÃ…Â¼ istnieje.',
+'created' => '"[%1]" zostaÃ…â€š utworzony.',
+'not_created' => '"[%1]" nie moÃ…Â¼na utworzyÃ„â€¡.',
+'really_delete' => 'usunÃ„â€¦Ã„â€¡ te pliki?',
+'deleted' => "Pliki zostaÃ…â€šy usuniÃ„â„¢te:\n[%1]",
+'not_deleted' => "Te pliki nie mogÃ„â€¦ byÃ„â€¡ usuniÃ„â„¢te:\n[%1]",
+'rename_file' => 'ZmieÃ…â€ž nazwÃ„â„¢ pliku:',
+'renamed' => '"[%1]" zostaÃ…â€šo zmienione na "[%2]".',
+'not_renamed' => '"[%1] nie moÃ…Â¼na zmieniÃ„â€¡ na "[%2]".',
+'move_files' => 'PrzenieÃ…â€º te pliki:',
+'moved' => "Pliki zostaÃ…â€šy przeniesione do \"[%2]\":\n[%1]",
+'not_moved' => "Pliki nie mogÃ„â€¦ byÃ„â€¡ przeniesione do \"[%2]\":\n[%1]",
 'copy_files' => 'Skopiuj te pliki:',
-'copied' => "Pliki zostały skopiowane \"[%2]\":\n[%1]",
-'not_copied' => "Te pliki nie mogą być kopiowane do \"[%2]\":\n[%1]",
-'not_edited' => '"[%1]" nie można edytować.',
-'executed' => "\"[%1]\" zostało wykonane pomyślnie:\n{%2}",
-'not_executed' => "\"[%1]\" nie może być wykonane:\n{%2}",
-'saved' => '"[%1]" został zapisany.',
-'not_saved' => '"[%1]" nie można zapisać.',
-'symlinked' => 'Dowiązanie symboliczne "[%2]" do "[%1]" zostało utworzone.',
-'not_symlinked' => 'Dowiązanie symboliczne "[%2]" do "[%1]" nie moze być utworzone.',
+'copied' => "Pliki zostaÃ…â€šy skopiowane \"[%2]\":\n[%1]",
+'not_copied' => "Te pliki nie mogÃ„â€¦ byÃ„â€¡ kopiowane do \"[%2]\":\n[%1]",
+'not_edited' => '"[%1]" nie moÃ…Â¼na edytowaÃ„â€¡.',
+'executed' => "\"[%1]\" zostaÃ…â€šo wykonane pomyÃ…â€ºlnie:\n{%2}",
+'not_executed' => "\"[%1]\" nie moÃ…Â¼e byÃ„â€¡ wykonane:\n{%2}",
+'saved' => '"[%1]" zostaÃ…â€š zapisany.',
+'not_saved' => '"[%1]" nie moÃ…Â¼na zapisaÃ„â€¡.',
+'symlinked' => 'DowiÃ„â€¦zanie symboliczne "[%2]" do "[%1]" zostaÃ…â€šo utworzone.',
+'not_symlinked' => 'DowiÃ„â€¦zanie symboliczne "[%2]" do "[%1]" nie moze byÃ„â€¡ utworzone.',
 'permission_for' => 'Uprawnienia "[%1]":',
-'permission_set' => 'Uprawnienia "[%1]" zostały ustalone na [%2].',
-'permission_not_set' => 'Uprawnienia "[%1]" nie mogą być ustawione na [%2].',
-'not_readable' => '"[%1]" nie można odczytać.'
+'permission_set' => 'Uprawnienia "[%1]" zostaÃ…â€šy ustalone na [%2].',
+'permission_not_set' => 'Uprawnienia "[%1]" nie mogÃ„â€¦ byÃ„â€¡ ustawione na [%2].',
+'not_readable' => '"[%1]" nie moÃ…Â¼na odczytaÃ„â€¡.'
     );
 
   case 'en':
@@ -3405,13 +3405,14 @@ function show_register ($msg, $case_failure, $email, $passwords, $justification,
     html_header();
 
     if($clear_fields){
-	$email = "";
-	$passwords = "";
-	$justification = "";
+    $email = "";
+    $passwords = "";
+    $justification = "";
     }
     echo '
-<script>
-function toggle(id,msg=""){
+<script type="text/javascript">
+<!--
+function toggle(id,msg){
    var e = document.getElementById("login_div");
    var f = document.getElementById("register_div");
    var g = document.getElementById("msg_login");
@@ -3454,7 +3455,7 @@ function toggle(id,msg=""){
       l.innerHTML="";
       h.innerHTML="";
       j.innerHTML="";
-   } 
+   }Â 
 }
 </script>
 <body style="margin-left: auto; margin-right: auto;">
@@ -3544,17 +3545,17 @@ function toggle(id,msg=""){
 </span>
  ';
     html_footer();
-    echo '<script>toggle(' .$case_failure. ');</script>';
+    echo '<script type="text/javascript">toggle(' .$case_failure. ');</script>';
     global $vars, $die_and_reload;
     if($die_and_reload){
-	echo '<script type="text/javascript">
-	function doReload(){
-	<!--
-	window.location = "' . $vars['site']['base_url'] . '"
-	//-->
-	}
+    echo '<script type="text/javascript">
+    function doReload(){
+    <!--
+    window.location = "' . $vars['site']['base_url'] . '"
+    //-->
+    }
         setInterval("doReload()", 3000);
-	</script>';
+    </script>';
     }
     die();
   }
@@ -3563,15 +3564,15 @@ function toggle(id,msg=""){
 function get_connection(){
     global $vars;
     try { 
-    	     $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+             $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
              } catch (Exception $exc) {
-    	     $msg = "ERROR 101. Please contact your site administrator.";
+             $msg = "ERROR 101. Please contact your site administrator.";
              }
     return $connection;
 }
 
 function close_connection($con){
-	mysqli_close($con); 
+    mysqli_close($con); 
 }
 
 function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $cfile){
@@ -3585,14 +3586,14 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
   $read_access=true; 
   foreach ($files as $file) {
         //if(!@is_dir($file))
-	{
-		#$res = mysqli_query($con, "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path='".$file."'");
-		$res = mysqli_query($con, $query);
-		if(mysqli_num_rows($res)<1){
-			$read_access=false;
-			break;	
-		}
-	}
+    {
+        #$res = mysqli_query($con, "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path='".$file."'");
+        $res = mysqli_query($con, $query);
+        if(mysqli_num_rows($res)<1){
+            $read_access=false;
+            break;    
+        }
+    }
   }
   mysqli_close($con);
   if(!$read_access){
