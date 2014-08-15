@@ -595,13 +595,13 @@ case 'preset':
        $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
        $count = mysqli_query($connection,$query);
        if(mysqli_num_rows($count) == 0){
-       // no such request
-       $msg = "Please retry. There was no such request received.";
+	   // no such request
+	   $msg = "Please retry. There was no such request received.";
        }else{
            // show password reset fields
-       $passwords = trim(mysql_escape_string($_POST['password']));
+	   $passwords = trim(mysql_escape_string($_POST['password']));
            $password = md5($passwords);
-       $msg = "Please fill with a new password.";
+	   $msg = "Please fill with a new password.";
        }
     }else{
         //invalid password reset attempt
@@ -3405,9 +3405,9 @@ function show_register ($msg, $case_failure, $email, $passwords, $justification,
     html_header();
 
     if($clear_fields){
-    $email = "";
-    $passwords = "";
-    $justification = "";
+	$email = "";
+	$passwords = "";
+	$justification = "";
     }
     echo '
 <script type="text/javascript">
