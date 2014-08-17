@@ -119,8 +119,6 @@
  * 
  */
 
-
-
 session_start();
 $msg = "";
 
@@ -129,9 +127,19 @@ global $email, $passwords, $justification;
 $die_and_reload = false;
 
 $vars = parse_ini_file("../webadmin.ini",true); 
+$debug=false;
 
+if(isset($vars['debug']['write_log_file']))
+   $debug=true;
 if(!isset($vars['debug']['NO_REPORTING']))
    error_reporting(0);
+
+if($debug){
+   log_this(date(DATE_ATOM). ' $_GET - ' . return_var_dump($_GET));
+   log_this(date(DATE_ATOM). ' $_POST - ' . return_var_dump($_POST));
+   log_this(date(DATE_ATOM). ' $_SESSION - ' . return_var_dump($_SESSION));
+}
+
 if(isset($_GET['logout'])){
   $_SESSION['login']='';
   unset($_SESSION['login']);
@@ -145,20 +153,6 @@ if(!isset($_SESSION['login'])){
   $_POST  = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
   $_GET  = filter_input_array(INPUT_GET, FILTER_SANITIZE_STRING);
   $clear_fields = false;
-  if(isset($vars['debug']['post'])){
-    echo 'POST variables!';
-    var_dump($_POST);
-  }
-
-  if(isset($vars['debug']['get'])){
-    echo 'GET variables!';
-    var_dump($_GET);
-  }
-
-  if(isset($vars['debug']['session'])){
-    echo 'SESSION variables!';
-    var_dump($_SESSION);
-  }
 
   if(isset($_GET['activate'])){
      // activation case
@@ -167,12 +161,14 @@ if(!isset($_SESSION['login'])){
       {
          try { 
          $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+  		$case_failure = 0;
          } catch (Exception $exc) {
          $msg = "ERROR 101. Please contact your site administrator.";
          } 
     
-    $code=mysqli_real_escape_string($connection,$_GET['key']);
-        $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code'");
+        $code=mysqli_real_escape_string($connection,$_GET['key']);
+	$query="SELECT uid FROM users WHERE activation='$code'";
+        $c=mysqli_query($connection,$query);
 
         if(mysqli_num_rows($c) > 0)
         {
@@ -181,16 +177,19 @@ if(!isset($_SESSION['login'])){
            {
               mysqli_query($connection,"UPDATE users SET status='1' WHERE activation='$code'");
               $msg="Your account is activated";
+  		$case_failure = 0;
             $clear_fields = true;
            }
            else
            {
               $msg ="Your account is already active, no need to activate again";
             $clear_fields = true;
+  		$case_failure = 0;
            }
         } else {
-       $msg ="Wrong activation code.";
+         $msg ="Wrong activation code.";
          $clear_fields = true;
+  		$case_failure = 0;
         }
     mysqli_close($connection); 
      }
@@ -198,7 +197,9 @@ if(!isset($_SESSION['login'])){
      {
        $msg = "Please contact site administrator for authorization."; 
        $clear_fields = true;
+  		$case_failure = 0;
      }
+     show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   }  
 
   if(isset($_POST['register'])){
@@ -256,12 +257,13 @@ if(!isset($_SESSION['login'])){
     } else {
     $msg = "Please fill all three fields: email, name and justification for registration!";
     $clear_fields = false;
+  	$case_failure = 1;
     }
 
   } else {
     // case login
     
-    $case_failure = 2;
+    $case_failure = 0;
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']))
     {
        // username and password sent from form
@@ -274,12 +276,12 @@ if(!isset($_SESSION['login'])){
        
        if(preg_match($regex, $email))
        { 
-      // check for admin
-       if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
-         $_SESSION['login'] = "0";
-         $_SESSION['mail'] = $email;
-         print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
-      }
+           // check for admin
+            if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
+              $_SESSION['login'] = "0";
+              $_SESSION['mail'] = $email;
+              print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
+           }
  
           try { 
              $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -289,39 +291,52 @@ if(!isset($_SESSION['login'])){
           
           $count = mysqli_query($connection,"SELECT uid, status, owner_authorized FROM users WHERE email='$email' and password='$password'");
 
-      $cnt = mysqli_num_rows($count);
-      if($cnt>1) {
-             $msg = "ERROR 102. Please contact your site administrator.";
-          }else if ( $cnt == 0 ) {
-         $msg = "Invalid email and/or password combination.";
-         $clear_fields = false;
-      }else if ( $cnt == 1 ){
-         $vals = mysqli_fetch_array($count);    
-         if ($vals['status'] != '1'){
-        $msg = "You have not yet activated your email.";
-            $clear_fields = false;
-         } else if ($vals['owner_authorized'] != '1') {
-        $msg = "Your account is awaiting site owner's authorization.";
-            $clear_fields = false;
-         } else {
-        $_SESSION['login'] = $vals['uid'];
-        $_SESSION['mail'] = $email;
-        header("refresh: 0;");
-         } 
+          $cnt = mysqli_num_rows($count);
+          if($cnt>1) {
+                 $msg = "ERROR 102. Please contact your site administrator.";
+              }else if ( $cnt == 0 ) {
+             $msg = "Invalid email and/or password combination.";
+             $clear_fields = false;
+          }else if ( $cnt == 1 ){
+             $vals = mysqli_fetch_array($count);    
+             if ($vals['status'] != '1'){
+            $msg = "You have not yet activated your email.";
+                $clear_fields = false;
+             } else if ($vals['owner_authorized'] != '1') {
+            $msg = "Your account is awaiting site owner's authorization.";
+                $clear_fields = false;
+             } else {
+          		 $_SESSION['login'] = $vals['uid'];
+            	 $_SESSION['mail'] = $email;
+                     header("refresh: 0;");
+             } 
           }
           mysqli_close($connection);
+       }else{
+            $msg = "The email you entered is invalid.";
+            $clear_fields = false;
+	    $case_failure=0;
        }
      } else {
-       if(isset($_POST))
+        if(isset($_POST))
           $msg = "Please fill email and password fields..";
-      $clear_fields = false;
+        $clear_fields = false;
      } 
   }
   if( (isset($_GET['action']) && $_GET['action']=='view') ||  (isset($_GET['action']) && $_GET['action']=='login')){
-     show_register("Please login to view the files.","" , "", "", "","",true);
+     if(isset($msg) && $msg!=""){
+        show_register($msg,0 , "", "", "","",true);
+     }else{
+        show_register("Please login to view the files.","" , "", "", "","",true);
+     }
+
   } elseif ( (isset($_GET['action']) && $_GET['action']  == 'login' ) || (isset($_GET['action']) && $_GET['action']  == 'register' )){
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
-  }
+  } 
+   #elseif ( (isset($_GET['activate']) && $_GET['activate']  == 'true' )){
+   #   show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
+   #}
+
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
@@ -3685,6 +3700,17 @@ function get_all_paths($path){
    }
    #echo $in;
    return $in;
+}
+
+function log_this($message){
+  error_log($message, 3, "my-errors.log");
+}
+
+function return_var_dump(){
+   $args=func_get_args(); //for <5.3.0 support ...
+   ob_start();
+   call_user_func_array('var_dump',$args);
+   return ob_get_clean();
 }
 
 ?>
