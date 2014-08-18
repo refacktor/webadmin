@@ -119,8 +119,6 @@
  * 
  */
 
-
-
 session_start();
 $msg = "";
 
@@ -129,9 +127,19 @@ global $email, $passwords, $justification;
 $die_and_reload = false;
 
 $vars = parse_ini_file("../webadmin.ini",true); 
+$debug=false;
 
+if(isset($vars['debug']['write_log_file']))
+   $debug=true;
 if(!isset($vars['debug']['NO_REPORTING']))
    error_reporting(0);
+
+if($debug){
+   log_this(date(DATE_ATOM). ' $_GET - ' . return_var_dump($_GET));
+   log_this(date(DATE_ATOM). ' $_POST - ' . return_var_dump($_POST));
+   log_this(date(DATE_ATOM). ' $_SESSION - ' . return_var_dump($_SESSION));
+}
+
 if(isset($_GET['logout'])){
   $_SESSION['login']='';
   unset($_SESSION['login']);
@@ -145,20 +153,6 @@ if(!isset($_SESSION['login'])){
   $_POST  = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
   $_GET  = filter_input_array(INPUT_GET, FILTER_SANITIZE_STRING);
   $clear_fields = false;
-  if(isset($vars['debug']['post'])){
-    echo 'POST variables!';
-    var_dump($_POST);
-  }
-
-  if(isset($vars['debug']['get'])){
-    echo 'GET variables!';
-    var_dump($_GET);
-  }
-
-  if(isset($vars['debug']['session'])){
-    echo 'SESSION variables!';
-    var_dump($_SESSION);
-  }
 
   if(isset($_GET['activate'])){
      // activation case
@@ -166,39 +160,55 @@ if(!isset($_SESSION['login'])){
      if(!empty($_GET['key']) && isset($_GET['key']))
       {
          try { 
-         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+	         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+  		 $case_failure = 0;
          } catch (Exception $exc) {
-         $msg = "ERROR 101. Please contact your site administrator.";
+            $msg = "ERROR 101. Please contact your site administrator.";
          } 
     
-    $code=mysqli_real_escape_string($connection,$_GET['key']);
-        $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code'");
+        $code=mysqli_real_escape_string($connection,$_GET['key']);
+	$query="SELECT uid FROM users WHERE activation='$code'";
+        if($debug)
+           log_this(date(DATE_ATOM). ' query - ' . $query);
+
+        $c=mysqli_query($connection,$query);
 
         if(mysqli_num_rows($c) > 0)
         {
-           $count=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code' and status='0'");
+	   $q1 = "SELECT uid FROM users WHERE activation='$code' and status='0'";
+           if($debug)
+              log_this(date(DATE_ATOM). ' query - ' . $q1);
+           $count=mysqli_query($connection, $q1);
            if(mysqli_num_rows($count) == 1)
            {
-              mysqli_query($connection,"UPDATE users SET status='1' WHERE activation='$code'");
+	      $q2 = "UPDATE users SET status='1' WHERE activation='$code'";
+              mysqli_query($connection, $q2);
+	      if($debug)
+                 log_this(date(DATE_ATOM). ' query - ' . $q2);
               $msg="Your account is activated";
-            $clear_fields = true;
+  	      $case_failure = 0;
+              $clear_fields = true;
            }
            else
            {
               $msg ="Your account is already active, no need to activate again";
-            $clear_fields = true;
+              $clear_fields = true;
+  	      $case_failure = 0;
            }
         } else {
-       $msg ="Wrong activation code.";
-         $clear_fields = true;
+            $msg ="Wrong activation code.";
+            $clear_fields = true;
+            $case_failure = 0;
         }
-    mysqli_close($connection); 
-     }
+        mysqli_close($connection); 
+      }
      if(!empty($_GET['code']) && isset($_GET['code']))
      {
-       $msg = "Please contact site administrator for authorization."; 
-       $clear_fields = true;
+         $msg = "Please contact site administrator for authorization."; 
+         $clear_fields = true;
+   	 $case_failure = 0;
      }
+     show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   }  
 
   if(isset($_POST['register'])){
@@ -256,12 +266,13 @@ if(!isset($_SESSION['login'])){
     } else {
     $msg = "Please fill all three fields: email, name and justification for registration!";
     $clear_fields = false;
+  	$case_failure = 1;
     }
 
   } else {
     // case login
     
-    $case_failure = 2;
+    $case_failure = 0;
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']))
     {
        // username and password sent from form
@@ -274,12 +285,12 @@ if(!isset($_SESSION['login'])){
        
        if(preg_match($regex, $email))
        { 
-      // check for admin
-       if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
-         $_SESSION['login'] = "0";
-         $_SESSION['mail'] = $email;
-         print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
-      }
+           // check for admin
+            if ($email == $vars['site']['admin_mail'] && $passwords == $vars['site']['admin_password']){
+              $_SESSION['login'] = "0";
+              $_SESSION['mail'] = $email;
+              print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
+           }
  
           try { 
              $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -289,39 +300,52 @@ if(!isset($_SESSION['login'])){
           
           $count = mysqli_query($connection,"SELECT uid, status, owner_authorized FROM users WHERE email='$email' and password='$password'");
 
-      $cnt = mysqli_num_rows($count);
-      if($cnt>1) {
-             $msg = "ERROR 102. Please contact your site administrator.";
-          }else if ( $cnt == 0 ) {
-         $msg = "Invalid email and/or password combination.";
-         $clear_fields = false;
-      }else if ( $cnt == 1 ){
-         $vals = mysqli_fetch_array($count);    
-         if ($vals['status'] != '1'){
-        $msg = "You have not yet activated your email.";
-            $clear_fields = false;
-         } else if ($vals['owner_authorized'] != '1') {
-        $msg = "Your account is awaiting site owner's authorization.";
-            $clear_fields = false;
-         } else {
-        $_SESSION['login'] = $vals['uid'];
-        $_SESSION['mail'] = $email;
-        header("refresh: 0;");
-         } 
+          $cnt = mysqli_num_rows($count);
+          if($cnt>1) {
+                 $msg = "ERROR 102. Please contact your site administrator.";
+              }else if ( $cnt == 0 ) {
+             $msg = "Invalid email and/or password combination.";
+             $clear_fields = false;
+          }else if ( $cnt == 1 ){
+             $vals = mysqli_fetch_array($count);    
+             if ($vals['status'] != '1'){
+            $msg = "You have not yet activated your email.";
+                $clear_fields = false;
+             } else if ($vals['owner_authorized'] != '1') {
+            $msg = "Your account is awaiting site owner's authorization.";
+                $clear_fields = false;
+             } else {
+          		 $_SESSION['login'] = $vals['uid'];
+            	 $_SESSION['mail'] = $email;
+                     header("refresh: 0;");
+             } 
           }
           mysqli_close($connection);
+       }else{
+            $msg = "The email you entered is invalid.";
+            $clear_fields = false;
+	    $case_failure=0;
        }
      } else {
-       if(isset($_POST))
+        if(isset($_POST))
           $msg = "Please fill email and password fields..";
-      $clear_fields = false;
+        $clear_fields = false;
      } 
   }
   if( (isset($_GET['action']) && $_GET['action']=='view') ||  (isset($_GET['action']) && $_GET['action']=='login')){
-     show_register("Please login to view the files.","" , "", "", "","",true);
+     if(isset($msg) && $msg!=""){
+        show_register($msg,0 , "", "", "","",true);
+     }else{
+        show_register("Please login to view the files.","" , "", "", "","",true);
+     }
+
   } elseif ( (isset($_GET['action']) && $_GET['action']  == 'login' ) || (isset($_GET['action']) && $_GET['action']  == 'register' )){
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
-  }
+  } 
+   #elseif ( (isset($_GET['activate']) && $_GET['activate']  == 'true' )){
+   #   show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
+   #}
+
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
@@ -3399,166 +3423,169 @@ function error ($phrase) {
 }
 
 function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login) {
-
- global $vars;
- if($show_login){
-    html_header();
-
-    if($clear_fields){
-	$email = "";
-	$passwords = "";
-	$justification = "";
+    global $vars,$debug;
+    if($debug)
+    {
+       $args = func_get_args();
+       log_this(date(DATE_ATOM). ' call show_register - ' . return_var_dump($args));
     }
-    echo '
-<script type="text/javascript">
-<!--
-function toggle(id,msg){
-   var e = document.getElementById("login_div");
-   var f = document.getElementById("register_div");
-   var g = document.getElementById("msg_login");
-   var h = document.getElementById("msg_register");
-   var i = document.getElementById("forgot_div");
-   var j = document.getElementById("msg_forgot");
-   var k = document.getElementById("reset_div");
-   var l = document.getElementById("msg_reset");
-
-
-   if(id == 1){
-      e.style.display =  "none";
-      i.style.display =  "none";
-      l.style.display =  "none";
-      f.style.display =  "block";
-      g.innerHTML="";
-      l.innerHTML="";
-      j.innerHTML="";
-   } else if (id == 2){
-      f.style.display =  "none";
-      l.style.display =  "none";
-      e.style.display =  "none";
-      i.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      l.innerHTML="";
-   } else if (id == 3){
-      i.style.display =  "none";
-      f.style.display =  "none";
-      e.style.display =  "none";
-      l.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   } else{
-      f.style.display =  "none";
-      l.style.display =  "none";
-      i.style.display =  "none";
-      e.style.display =  "block";
-      l.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   }
-}
-  //-->
-</script>
-<body style="margin-left: auto; margin-right: auto;">
-<h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
-<span style="padding: 15px;">
-<div id="login_div" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=login" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
-<tr/>
-<tr>
-<td>Password </td>
-<td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
-<td><a href="javascript:toggle(2);">Forgot Password</a></td>
-</tr>
-<tr>
-<td>
-<input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
-<tr>
-<td colspan="3">
-<span class="msg" id="msg_login">' . $msg . '</span>
-</td></tr>
-</table>
-</form>
-</div>
-
-<div id="register_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=register" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-<tr>
-<td>Password</td>
-<td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-<a href="javascript:toggle();">Login</a></td><td>
-<input type="hidden" name="register" value="true" />
-<input type="submit" class="button" value="Register" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_register">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-<div id="forgot_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-</td></tr>
-<tr><td>
-<input type="hidden" name="forgot" value="true" />
-<input type="submit" class="button" value="Recover password" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-<div id="reset_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-<tr>
-<td>Password</td>
-<td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
-<tr>
-<td>Confirm Password</td>
-<td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-<a href="javascript:toggle();">Login</a></td><td>
-<input type="hidden" name="presetvalues" value="true" />
-<input type="submit" class="button" value="Change password" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-
-
-</span>
- ';
-    html_footer();
-    echo '<script>toggle(' .$case_failure. ');</script>';
-    global $vars, $die_and_reload;
-    if($die_and_reload){
-	echo '<script type="text/javascript">
-	function doReload(){
-	<!--
-	window.location = "' . $vars['site']['base_url'] . '"
-	//-->
-	}
-        setInterval("doReload()", 3000);
-	</script>';
-    }
-    die();
+    
+    if($show_login){
+       html_header();
+   
+       if($clear_fields){
+          $email = "";
+       	  $passwords = "";
+          $justification = "";
+       }
+       echo '
+        <script type="text/javascript">
+        <!--
+        function toggle(id,msg){
+           var e = document.getElementById("login_div");
+           var f = document.getElementById("register_div");
+           var g = document.getElementById("msg_login");
+           var h = document.getElementById("msg_register");
+           var i = document.getElementById("forgot_div");
+           var j = document.getElementById("msg_forgot");
+           var k = document.getElementById("reset_div");
+           var l = document.getElementById("msg_reset");
+        
+        
+           if(id == 1){
+              e.style.display =  "none";
+              i.style.display =  "none";
+              l.style.display =  "none";
+              f.style.display =  "block";
+              g.innerHTML="";
+              l.innerHTML="";
+              j.innerHTML="";
+           } else if (id == 2){
+              f.style.display =  "none";
+              l.style.display =  "none";
+              e.style.display =  "none";
+              i.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              l.innerHTML="";
+           } else if (id == 3){
+              i.style.display =  "none";
+              f.style.display =  "none";
+              e.style.display =  "none";
+              l.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           } else{
+              f.style.display =  "none";
+              l.style.display =  "none";
+              i.style.display =  "none";
+              e.style.display =  "block";
+              l.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           }
+        }
+          //-->
+        </script>
+        <body style="margin-left: auto; margin-right: auto;">
+        <h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
+        <span style="padding: 15px;">
+        <div id="login_div" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=login" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
+        <tr/>
+        <tr>
+        <td>Password </td>
+        <td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
+        <td><a href="javascript:toggle(2);">Forgot Password</a></td>
+        </tr>
+        <tr>
+        <td>
+        <input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
+        <tr>
+        <td colspan="3">
+        <span class="msg" id="msg_login">' . $msg . '</span>
+        </td></tr>
+        </table>
+        </form>
+        </div>
+        
+        <div id="register_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=register" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        <tr>
+        <td>Password</td>
+        <td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
+        <tr><td>Justification </td><td>
+        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+        <a href="javascript:toggle();">Login</a></td><td>
+        <input type="hidden" name="register" value="true" />
+        <input type="submit" class="button" value="Register" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_register">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        <div id="forgot_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        </td></tr>
+        <tr><td>
+        <input type="hidden" name="forgot" value="true" />
+        <input type="submit" class="button" value="Recover password" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        <div id="reset_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        <tr>
+        <td>Password</td>
+        <td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
+        <tr>
+        <td>Confirm Password</td>
+        <td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
+        <tr><td>Justification </td><td>
+        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+        <a href="javascript:toggle();">Login</a></td><td>
+        <input type="hidden" name="presetvalues" value="true" />
+        <input type="submit" class="button" value="Change password" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        </span>
+         ';
+        html_footer();
+        echo '<script>toggle(' .$case_failure. ');</script>';
+        global $vars, $die_and_reload;
+        if($die_and_reload){
+             echo '<script type="text/javascript">
+             function doReload(){
+             <!--
+             window.location = "' . $vars['site']['base_url'] . '"
+             //-->
+             }
+             setInterval("doReload()", 3000);
+             </script>';
+        }
+        die();
   }
 }
 
@@ -3685,6 +3712,17 @@ function get_all_paths($path){
    }
    #echo $in;
    return $in;
+}
+
+function log_this($message){
+  error_log($message, 3, "my-errors.log");
+}
+
+function return_var_dump(){
+   $args=func_get_args(); //for <5.3.0 support ...
+   ob_start();
+   call_user_func_array('var_dump',$args);
+   return ob_get_clean();
 }
 
 ?>
