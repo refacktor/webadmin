@@ -160,44 +160,53 @@ if(!isset($_SESSION['login'])){
      if(!empty($_GET['key']) && isset($_GET['key']))
       {
          try { 
-         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-  		$case_failure = 0;
+	         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+  		 $case_failure = 0;
          } catch (Exception $exc) {
-         $msg = "ERROR 101. Please contact your site administrator.";
+            $msg = "ERROR 101. Please contact your site administrator.";
          } 
     
         $code=mysqli_real_escape_string($connection,$_GET['key']);
 	$query="SELECT uid FROM users WHERE activation='$code'";
+        if($debug)
+           log_this(date(DATE_ATOM). ' query - ' . $query);
+
         $c=mysqli_query($connection,$query);
 
         if(mysqli_num_rows($c) > 0)
         {
-           $count=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code' and status='0'");
+	   $q1 = "SELECT uid FROM users WHERE activation='$code' and status='0'";
+           if($debug)
+              log_this(date(DATE_ATOM). ' query - ' . $q1);
+           $count=mysqli_query($connection, $q1);
            if(mysqli_num_rows($count) == 1)
            {
-              mysqli_query($connection,"UPDATE users SET status='1' WHERE activation='$code'");
+	      $q2 = "UPDATE users SET status='1' WHERE activation='$code'";
+              mysqli_query($connection, $q2);
+	      if($debug)
+                 log_this(date(DATE_ATOM). ' query - ' . $q2);
               $msg="Your account is activated";
-  		$case_failure = 0;
-            $clear_fields = true;
+  	      $case_failure = 0;
+              $clear_fields = true;
            }
            else
            {
               $msg ="Your account is already active, no need to activate again";
-            $clear_fields = true;
-  		$case_failure = 0;
+              $clear_fields = true;
+  	      $case_failure = 0;
            }
         } else {
-         $msg ="Wrong activation code.";
-         $clear_fields = true;
-  		$case_failure = 0;
+            $msg ="Wrong activation code.";
+            $clear_fields = true;
+            $case_failure = 0;
         }
-    mysqli_close($connection); 
-     }
+        mysqli_close($connection); 
+      }
      if(!empty($_GET['code']) && isset($_GET['code']))
      {
-       $msg = "Please contact site administrator for authorization."; 
-       $clear_fields = true;
-  		$case_failure = 0;
+         $msg = "Please contact site administrator for authorization."; 
+         $clear_fields = true;
+   	 $case_failure = 0;
      }
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   }  
@@ -3414,166 +3423,169 @@ function error ($phrase) {
 }
 
 function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login) {
-
- global $vars;
- if($show_login){
-    html_header();
-
-    if($clear_fields){
-	$email = "";
-	$passwords = "";
-	$justification = "";
+    global $vars,$debug;
+    if($debug)
+    {
+       $args = func_get_args();
+       log_this(date(DATE_ATOM). ' call show_register - ' . return_var_dump($args));
     }
-    echo '
-<script type="text/javascript">
-<!--
-function toggle(id,msg){
-   var e = document.getElementById("login_div");
-   var f = document.getElementById("register_div");
-   var g = document.getElementById("msg_login");
-   var h = document.getElementById("msg_register");
-   var i = document.getElementById("forgot_div");
-   var j = document.getElementById("msg_forgot");
-   var k = document.getElementById("reset_div");
-   var l = document.getElementById("msg_reset");
-
-
-   if(id == 1){
-      e.style.display =  "none";
-      i.style.display =  "none";
-      l.style.display =  "none";
-      f.style.display =  "block";
-      g.innerHTML="";
-      l.innerHTML="";
-      j.innerHTML="";
-   } else if (id == 2){
-      f.style.display =  "none";
-      l.style.display =  "none";
-      e.style.display =  "none";
-      i.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      l.innerHTML="";
-   } else if (id == 3){
-      i.style.display =  "none";
-      f.style.display =  "none";
-      e.style.display =  "none";
-      l.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   } else{
-      f.style.display =  "none";
-      l.style.display =  "none";
-      i.style.display =  "none";
-      e.style.display =  "block";
-      l.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   }
-}
-  //-->
-</script>
-<body style="margin-left: auto; margin-right: auto;">
-<h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
-<span style="padding: 15px;">
-<div id="login_div" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=login" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
-<tr/>
-<tr>
-<td>Password </td>
-<td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
-<td><a href="javascript:toggle(2);">Forgot Password</a></td>
-</tr>
-<tr>
-<td>
-<input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
-<tr>
-<td colspan="3">
-<span class="msg" id="msg_login">' . $msg . '</span>
-</td></tr>
-</table>
-</form>
-</div>
-
-<div id="register_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=register" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-<tr>
-<td>Password</td>
-<td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-<a href="javascript:toggle();">Login</a></td><td>
-<input type="hidden" name="register" value="true" />
-<input type="submit" class="button" value="Register" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_register">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-<div id="forgot_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-</td></tr>
-<tr><td>
-<input type="hidden" name="forgot" value="true" />
-<input type="submit" class="button" value="Recover password" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-<div id="reset_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-<tr>
-<td>Password</td>
-<td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
-<tr>
-<td>Confirm Password</td>
-<td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-<a href="javascript:toggle();">Login</a></td><td>
-<input type="hidden" name="presetvalues" value="true" />
-<input type="submit" class="button" value="Change password" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-
-
-</span>
- ';
-    html_footer();
-    echo '<script>toggle(' .$case_failure. ');</script>';
-    global $vars, $die_and_reload;
-    if($die_and_reload){
-	echo '<script type="text/javascript">
-	function doReload(){
-	<!--
-	window.location = "' . $vars['site']['base_url'] . '"
-	//-->
-	}
-        setInterval("doReload()", 3000);
-	</script>';
-    }
-    die();
+    
+    if($show_login){
+       html_header();
+   
+       if($clear_fields){
+          $email = "";
+       	  $passwords = "";
+          $justification = "";
+       }
+       echo '
+        <script type="text/javascript">
+        <!--
+        function toggle(id,msg){
+           var e = document.getElementById("login_div");
+           var f = document.getElementById("register_div");
+           var g = document.getElementById("msg_login");
+           var h = document.getElementById("msg_register");
+           var i = document.getElementById("forgot_div");
+           var j = document.getElementById("msg_forgot");
+           var k = document.getElementById("reset_div");
+           var l = document.getElementById("msg_reset");
+        
+        
+           if(id == 1){
+              e.style.display =  "none";
+              i.style.display =  "none";
+              l.style.display =  "none";
+              f.style.display =  "block";
+              g.innerHTML="";
+              l.innerHTML="";
+              j.innerHTML="";
+           } else if (id == 2){
+              f.style.display =  "none";
+              l.style.display =  "none";
+              e.style.display =  "none";
+              i.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              l.innerHTML="";
+           } else if (id == 3){
+              i.style.display =  "none";
+              f.style.display =  "none";
+              e.style.display =  "none";
+              l.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           } else{
+              f.style.display =  "none";
+              l.style.display =  "none";
+              i.style.display =  "none";
+              e.style.display =  "block";
+              l.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           }
+        }
+          //-->
+        </script>
+        <body style="margin-left: auto; margin-right: auto;">
+        <h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
+        <span style="padding: 15px;">
+        <div id="login_div" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=login" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
+        <tr/>
+        <tr>
+        <td>Password </td>
+        <td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
+        <td><a href="javascript:toggle(2);">Forgot Password</a></td>
+        </tr>
+        <tr>
+        <td>
+        <input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
+        <tr>
+        <td colspan="3">
+        <span class="msg" id="msg_login">' . $msg . '</span>
+        </td></tr>
+        </table>
+        </form>
+        </div>
+        
+        <div id="register_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=register" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        <tr>
+        <td>Password</td>
+        <td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
+        <tr><td>Justification </td><td>
+        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+        <a href="javascript:toggle();">Login</a></td><td>
+        <input type="hidden" name="register" value="true" />
+        <input type="submit" class="button" value="Register" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_register">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        <div id="forgot_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        </td></tr>
+        <tr><td>
+        <input type="hidden" name="forgot" value="true" />
+        <input type="submit" class="button" value="Recover password" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        <div id="reset_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        <tr>
+        <td>Password</td>
+        <td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
+        <tr>
+        <td>Confirm Password</td>
+        <td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
+        <tr><td>Justification </td><td>
+        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+        <a href="javascript:toggle();">Login</a></td><td>
+        <input type="hidden" name="presetvalues" value="true" />
+        <input type="submit" class="button" value="Change password" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        </span>
+         ';
+        html_footer();
+        echo '<script>toggle(' .$case_failure. ');</script>';
+        global $vars, $die_and_reload;
+        if($die_and_reload){
+             echo '<script type="text/javascript">
+             function doReload(){
+             <!--
+             window.location = "' . $vars['site']['base_url'] . '"
+             //-->
+             }
+             setInterval("doReload()", 3000);
+             </script>';
+        }
+        die();
   }
 }
 
