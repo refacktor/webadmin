@@ -393,10 +393,6 @@ if(!isset($_SESSION['login'])){
   } elseif ( (isset($_GET['action']) && $_GET['action']  == 'login' ) || (isset($_GET['action']) && $_GET['action']  == 'register' )){
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   } 
-   #elseif ( (isset($_GET['activate']) && $_GET['activate']  == 'true' )){
-   #   show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
-   #}
-
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
@@ -663,7 +659,7 @@ case 'preset':
         //invalid password reset attempt
        $msg = "Invalid password reset event.";
     }    
-    show_register ($msg, 3, "", "", "", true, true); 
+    show_register ($msg, 3, "", "", "", true, true,$messageOnly); 
 break;
 
 case 'forgot':
@@ -3473,7 +3469,7 @@ function error ($phrase) {
 
 }
 
-function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login) {
+function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login, $onlyMessage=false) {
     global $vars,$debug;
     if($debug)
     {
@@ -3599,33 +3595,35 @@ function show_register ($msg, $case_failure, $email, $passwords, $justification,
         </table>
         </form>
         </div>
-        <div id="reset_div" style="display:none" align="center">
-        <form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
-        <table>
-        <tr>
-        <td>Email</td>
-        <td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-        <tr>
-        <td>Password</td>
-        <td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
-        <tr>
-        <td>Confirm Password</td>
-        <td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
-        <tr><td>Justification </td><td>
-        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-        <a href="javascript:toggle();">Login</a></td><td>
-        <input type="hidden" name="presetvalues" value="true" />
-        <input type="submit" class="button" value="Change password" /></td></tr>
-        <tr><td colspan="3">
-        <span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
-        </table>
-        </form>
-        </div>
+<div id="reset_div" style="display:none" align="center">
+<form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
+<table>
+<tr>
+<td>Password</td>
+<td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
+<tr>
+<td>Confirm Password</td>
+<td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/>
+<input id="key" type="hidden" name="key" value="' . $_GET['key']  .'"/></td></tr>
+</td></tr>
+<tr><td>
+<a href="javascript:toggle();">Login</a></td><td>
+<input type="hidden" name="presetvalues" value="true" />
+<input type="submit" class="button" value="Change password" /></td></tr>
+<tr><td colspan="3">
+</table>
+</form>
+</div>
+
+<span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
         </span>
          ';
-        html_footer();
-        echo '<script>toggle(' .$case_failure. ');</script>';
-        global $vars, $die_and_reload;
+    html_footer();
+    if($onlyMessage)
+       echo '<script>toggle(' .$case_failure. ', "", true);</script>';
+    else
+       echo '<script>toggle(' .$case_failure. ');</script>';
+    global $vars, $die_and_reload;
         if($die_and_reload){
              echo '<script type="text/javascript">
              function doReload(){
