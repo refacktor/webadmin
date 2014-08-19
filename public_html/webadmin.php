@@ -607,13 +607,42 @@ if(!empty($access_perm) && isset($access_perm) && $access_perm!="") {
 switch ($action) {
 
 case 'presetvalues':
- die('In preset values');
-# if(!empty($_GET['key']) && isset($_POST['key'])){
-# }else{
-# }
+ $messageOnly = false;
+ if(isset($_POST['password']) && !empty($_POST['password']) && isset($_POST['cpassword']) && !empty($_POST['cpassword']) && isset($_POST['key']) && !empty($_POST['key']))
+    {
+       $p = trim(mysql_escape_string($_POST['password']));
+       $cp = trim(mysql_escape_string($_POST['cpassword']));
+       $key = trim(mysql_escape_string($_POST['key']));
+       if(strlen($key)<32){
+	   $msg = "You have submitted an invalid key.";
+	   $_GET['key']=$key;
+       }else  if($p != $cp){
+	   $msg = "The passwords you have submitted do not match. Please try again.";
+	   $_GET['key']=$key;
+       } else { 
+           $connection =get_connection(); 
+           $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
+           $count = mysqli_query($connection,$query);
+           if(mysqli_num_rows($count) == 0){
+               $msg = "Please retry. There was no such request received or your account is under moderation.";
+	       $_GET['key']=$key;
+           }else{
+               $password = md5($p);
+	       $query = "UPDATE users SET password = '$password', activation='' WHERE activation = '$key'";
+               $t = mysqli_query($connection,$query);
+               $msg = "Your password has been successfully reset.";
+               $messageOnly=true;
+           }
+	   mysqli_close($connection);
+       }
+    }else{
+	   $msg = "Invalid password selected. Please try a new one.";
+    }    
+    show_register ($msg, 3, "", "", "", true, true,$messageOnly); 
 break;
 
 case 'preset':
+ $messageOnly = true;
  if(!empty($_GET['key']) && isset($_GET['key']))
     {
        $key = trim(mysql_escape_string($_GET['key']));
@@ -628,6 +657,7 @@ case 'preset':
 	   $passwords = trim(mysql_escape_string($_POST['password']));
            $password = md5($passwords);
 	   $msg = "Please fill with a new password.";
+	   $messageOnly=false;
        }
     }else{
         //invalid password reset attempt
@@ -683,10 +713,6 @@ case 'forgot':
 break;
 
 case 'read_access':
-
-  // if(isset($_SESSION) && $_SESSION['login']!='0'){
-  //     print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-  //  }  
 
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -3480,14 +3506,14 @@ function show_register ($msg, $case_failure, $email, $passwords, $justification,
            if(id == 1){
               e.style.display =  "none";
               i.style.display =  "none";
-              l.style.display =  "none";
+              k.style.display =  "none";
               f.style.display =  "block";
               g.innerHTML="";
               l.innerHTML="";
               j.innerHTML="";
            } else if (id == 2){
               f.style.display =  "none";
-              l.style.display =  "none";
+              k.style.display =  "none";
               e.style.display =  "none";
               i.style.display =  "block";
               g.innerHTML="";
@@ -3497,13 +3523,13 @@ function show_register ($msg, $case_failure, $email, $passwords, $justification,
               i.style.display =  "none";
               f.style.display =  "none";
               e.style.display =  "none";
-              l.style.display =  "block";
+              k.style.display =  "block";
               g.innerHTML="";
               h.innerHTML="";
               j.innerHTML="";
            } else{
               f.style.display =  "none";
-              l.style.display =  "none";
+              k.style.display =  "none";
               i.style.display =  "none";
               e.style.display =  "block";
               l.innerHTML="";
