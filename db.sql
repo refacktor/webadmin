@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 	`activation` varchar(255) NOT NULL UNIQUE,
 	`status` enum('0','1') NOT NULL DEFAULT '0',
 	`owner_authorized` enum('0','1') NOT NULL DEFAULT '0',
+	`owner_key`  varchar(255) NOT NULL UNIQUE,
 	`justification` varchar(300),
 	PRIMARY KEY (`uid`)
 );
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS `file_access` (
 	`path` varchar(500) NOT NULL,
 	`access_type` enum('0','1') NOT NULL DEFAULT '0',
 	`owner_authorized` enum('0','1') NOT NULL DEFAULT '0',
+	`owner_key`  varchar(255) NOT NULL DEFAULT '',
 	`updated_path` varchar(500) NOT NULL
 );
 
