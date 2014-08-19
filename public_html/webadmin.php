@@ -248,11 +248,19 @@ if(!isset($_SESSION['login'])){
              $subject="webadmin.php - Email verification";
              $base_url = $vars['site']['base_url'];
              $body='Hi, <br/> <br/> We need to make sure you are human. Please verify your email and get started using your webadmin account. <br/> <br/> <a href="'.$base_url.'?activate=true&key='.$activation.'">'.$base_url.'?activate=true&key='.$activation.'</a>';
-             $body_admin='Hi, <br/> <br/> A new user - ' . $email. ' wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="'.$base_url.'?activate=true&code='.$activation.'">'.$base_url.'?activate=true&code='.$activation.'</a>';
-         $headers  = 'MIME-Version: 1.0' . "\r\n";
-         $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+             $headers  = 'MIME-Version: 1.0' . "\r\n";
+             $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
              mail($to, $subject, $body, $headers,'-froot@localhost'); 
-             mail($vars['site']['admin_mail'], 'New user activation', $body_admin, $headers,'-froot@localhost'); 
+
+             // admin email 
+             $body_admin='Hi, <br/> <br/> A new user - [[USER]] wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="[[URL]]">[[URL]]</a>';
+             $values = array(
+  		  'USER' => $email,
+		  'URL' => $base_url . '?activate=true&code=' . $activation,
+		);
+            $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
+	     mail_admin('New user activation' , $body_admin, $values, $qu);
+
              $msg= "Registration successful, please activate your email.";
           } else {
              $msg= 'The email is already taken, please try new.';
@@ -3725,4 +3733,41 @@ function return_var_dump(){
    return ob_get_clean();
 }
 
+/**
+*   $body='Hi, <br/> <br/> A new user - ' . $email. ' wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="%%URL%%">%%URL%%</a>';
+
+$values : These are the strings that need to be replaced.
+  ('USERNAME' => 'purple.coder@yahoo.co.uk', 'URL1' => 'test.com/test.php', 'URL2' => 'test.com/test2.php')
+ 
+*
+*/
+
+function mail_admin($sub , $msg, $values, $query){
+   global $vars;
+   $to=$vars['site']['admin_mail'];
+   $subject=$sub;
+   $map = array();
+   $pattern = '[[%s]]';
+   $id = "";
+   foreach($values as $var => $value)
+   {
+      if(strpos($var, 'URL')!== false){
+          if($id==""){
+	     $id = md5(uniqid().time());
+
+             $query = strtr($query, array('[[OWNER_KEY]]' => $id)); 
+             $con = get_connection();
+             mysqli_query($con, $query);
+	     mysqli_close($con);
+          }
+          $value.="&ownerk=" . $id;
+      }
+      $map[sprintf($pattern, $var)] = $value;
+   }
+   $msg = strtr($msg, $map); 
+   $body = $msg;
+   $headers  = 'MIME-Version: 1.0' . "\r\n";
+   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+}
 ?>
