@@ -301,7 +301,7 @@ if(!isset($_SESSION['login'])){
   		  'USER' => $email,
 		  'URL' => $base_url . '?activate=true&code=' . $activation,
 		);
-            $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
+             $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
 	     mail_admin('New user activation' , $body_admin, $values, $qu);
 
              $msg= "Registration successful, please check your email.";
@@ -684,9 +684,9 @@ break;
 
 case 'read_access':
 
-   if(isset($_SESSION) && $_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+  // if(isset($_SESSION) && $_SESSION['login']!='0'){
+  //     print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+  //  }  
 
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -696,6 +696,7 @@ case 'read_access':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -703,12 +704,14 @@ case 'read_access':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
-
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0'");
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0' and file_access.owner_key='$ownerk'");
   
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0'");
+     mysqli_query($connection,"UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0' and owner_key='$ownerk'");
      $to=$get_email;
      $subject="webadmin.php - Read access granted";
      $body="Hi " . $get_email . ', <br/> Your request for read access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
@@ -717,16 +720,16 @@ case 'read_access':
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
      print_and_reload("Notified " .$get_email. " of read access granted to " .$get_path, 3, $vars['site']['base_url']);
   }else{
-       print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+     print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
   mysqli_close($connection);
 
   break;
 
 case 'read_deny':
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
 
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -736,6 +739,7 @@ case 'read_deny':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
   
    if ( $get_email == "" ){
@@ -744,12 +748,15 @@ case 'read_deny':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='0'");
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='0' and file_access.owner_key='" .$ownerk. "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid'] . "' and path = '" .$get_path. "' and access_type='0'");
+     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid'] . "' and path = '" .$get_path. "' and access_type='0' and owner_key='"  . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
      $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for read access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
@@ -768,9 +775,9 @@ case 'read_deny':
 
 case 'write_access':
 
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -779,6 +786,7 @@ case 'write_access':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -786,12 +794,16 @@ case 'write_access':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1'");
+
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1' and file_access.owner_key='" . $ownerk. "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1'");
+     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key='" . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Write access granted";
      $body="Hi " . $get_email . ', <br/> Your request for write access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
@@ -807,9 +819,9 @@ case 'write_access':
   break;
 
 case 'write_deny':
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -818,7 +830,7 @@ case 'write_deny':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
-
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
   
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -826,12 +838,15 @@ case 'write_deny':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='1'");
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='1' and file_access.owner_key='" . $ownerk . "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1'");
+     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key = '" . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
      $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for write access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
@@ -863,16 +878,20 @@ case 'read':
   }
   mysqli_close($connection);
 
-  $to=$vars['site']['admin_mail'];
-  $subject="webadmin.php - Read access required";
-  $body="Hi, <br/>User " . $_SESSION['mail'] . ' needs read access to ' . $file . '. You can grant it by clicking the link below: <br/><br/>';
-  $body.='<a href="' .$vars['site']['base_url']. '?action=read_access&file='.$file.'&user='.$_SESSION['mail'] . '">Grant read access</a>.';
-  $body.='You can deny it by clicking the link below:<br/><a href="' .$vars['site']['base_url']. '?action=read_deny&file='.$file.'&user='.$_SESSION['mail'] . '">Deny read access</a>.<br/>Thanks.';
-  $headers  = 'MIME-Version: 1.0' . "\r\n";
-  $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-  mail($to, $subject, $body, $headers,'-froot@localhost'); 
-  print_and_reload("Notified site owner for a read access to " .$file, 3, $vars['site']['base_url']);
 
+  /////////// admin_mail ////////////////////
+  $body_admin='Hi, <br/>User - [[USER]]  needs read access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+  $body_admin.='<a href="[[URL1]]">Grant read access</a>.<br/>';
+  $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny read access</a>.<br/>Thanks.';
+  $values = array('USER' => $_SESSION['mail'],
+		  'URL1' => $vars['site']['base_url']. '?action=read_access&file=' . $file . '&user=' . $_SESSION['mail'],
+		  'URL2' => $vars['site']['base_url']. '?action=read_deny&file=' . $file . '&user=' . $_SESSION['mail']
+		);
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  mail_admin('webadmin.php - Read access required' , $body_admin, $values, $qu);
+  /////////// admin_mail end ////////////////////
+  
+  print_and_reload("Notified site owner for a read access to " .$file, 3, $vars['site']['base_url']);
 break;
 
 case 'write':
@@ -893,14 +912,18 @@ case 'write':
   }
   mysqli_close($connection);
  
-  $to=$vars['site']['admin_mail'];
-  $subject="webadmin.php - Write access required";
-  $body="Hi, <br/>User " . $_SESSION['mail'] . ' needs write access to ' . $file . '. You can grant it by clicking the link below: <br/><br/>';
-  $body.='<a href="' .$vars['site']['base_url']. '?action=write_access&file='.$file.'&user='.$_SESSION['mail'] . '">Grant write access</a>.';
-  $body.='You can deny it by clicking the link below:<br/><a href="' .$vars['site']['base_url']. '?action=write_deny&file='.$file.'&user='.$_SESSION['mail'] . '">Deny write access</a>.<br/>Thanks.';
-  $headers  = 'MIME-Version: 1.0' . "\r\n";
-  $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-  mail($to, $subject, $body, $headers,'-froot@localhost'); 
+  /////////// admin_mail ////////////////////
+  $body_admin='Hi, <br/>User - [[USER]]  needs write access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+  $body_admin.='<a href="[[URL1]]">Grant write access</a>.<br/>';
+  $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny read access</a>.<br/>Thanks.';
+  $values = array('USER' => $_SESSION['mail'],
+		  'URL1' => $vars['site']['base_url']. '?action=write_access&file=' . $file . '&user=' . $_SESSION['mail'],
+		  'URL2' => $vars['site']['base_url']. '?action=write_deny&file=' . $file . '&user=' . $_SESSION['mail']
+		);
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  mail_admin('webadmin.php - Write access required' , $body_admin, $values, $qu);
+  /////////// admin_mail end ////////////////////
+ 
   print_and_reload("Notified site owner for a write access to " .$file, 3, $vars['site']['base_url']);
 
 break;
@@ -3732,7 +3755,7 @@ $values : These are the strings that need to be replaced.
 */
 
 function mail_admin($sub , $msg, $values, $query){
-   global $vars;
+   global $vars, $debug;
    $to=$vars['site']['admin_mail'];
    $subject=$sub;
    $map = array();
@@ -3743,7 +3766,9 @@ function mail_admin($sub , $msg, $values, $query){
       if(strpos($var, 'URL')!== false){
           if($id==""){
 	     $id = md5(uniqid().time());
-             $query = strtr($query, array('[[OWNER_KEY]]' => $id)); 
+             $query = strtr($query, array('[[OWNER_KEY]]' => $id));
+             if($debug)
+		   log_this(date(DATE_ATOM). ' query - ' . $query);
              $con = get_connection();
              mysqli_query($con, $query);
 	     mysqli_close($con);
