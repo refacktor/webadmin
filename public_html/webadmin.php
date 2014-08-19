@@ -185,7 +185,7 @@ if(!isset($_SESSION['login'])){
               mysqli_query($connection, $q2);
 	      if($debug)
                  log_this(date(DATE_ATOM). ' query - ' . $q2);
-              $msg="Your account is activated";
+              $msg="Congratulations! Your account is successfully activated.";
   	      $case_failure = 0;
               $clear_fields = true;
            }
@@ -202,6 +202,49 @@ if(!isset($_SESSION['login'])){
         }
         mysqli_close($connection); 
       }
+
+     if(!empty($_GET['code']) && isset($_GET['code'])&& !empty($_GET['ownerk']) && isset($_GET['ownerk']))
+     {
+        try { 
+            $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+        } catch (Exception $exc) {
+            $msg = "ERROR 101. Please contact your site administrator.";
+        } 
+       
+       $code=mysqli_real_escape_string($connection,$_GET['code']);
+       $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
+       $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code' and owner_key='$ownerk'");
+ 
+       if(mysqli_num_rows($c) > 0)
+       {
+          $count=mysqli_query($connection,"SELECT uid,email FROM users WHERE activation='$code' and owner_authorized='0' and owner_key='$ownerk'");
+          if(mysqli_num_rows($count) == 1)
+          {
+             mysqli_query($connection,"UPDATE users SET owner_authorized='1' WHERE activation='$code' and owner_key='$ownerk'");
+             $vals = mysqli_fetch_array($count);
+             $to=$vals['email'];
+             $msg="User account - $to is successfully authorized.";
+             $subject="webadmin.php - Login authorized";
+             $base_url = $vars['site']['base_url'];
+             $body='Hi ' .$to. ', <br/> <br/> Congratulations. The site owner has approved of your login to webadmin. <a href="'.$base_url.'">Login now</a>';
+             $headers  = 'MIME-Version: 1.0' . "\r\n";
+             $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+             mail($to, $subject, $body, $headers,'-froot@localhost'); 
+             $clear_fields = true;
+          }
+          else
+          {
+             $msg ="User account already active.";
+             $clear_fields = true;
+          }
+       } else {
+          $msg ="Something went wrong. Either a wrong activation code or a wrong key was submitted. Contact your site administrator.";
+          $clear_fields = true;
+       }
+       mysqli_close($connection);
+       print_and_reload($msg, 3,  $vars['site']['base_url']);
+     }
+    
      if(!empty($_GET['code']) && isset($_GET['code']))
      {
          $msg = "Please contact site administrator for authorization."; 
@@ -261,7 +304,7 @@ if(!isset($_SESSION['login'])){
             $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
 	     mail_admin('New user activation' , $body_admin, $values, $qu);
 
-             $msg= "Registration successful, please activate your email.";
+             $msg= "Registration successful, please check your email.";
           } else {
              $msg= 'The email is already taken, please try new.';
                 $clear_fields = true;
@@ -357,56 +400,7 @@ if(!isset($_SESSION['login'])){
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
-} else {
-  // check if site admin
-  if($_SESSION['login'] == '0') {
-     if(isset($_GET['activate'])) {
-        // activation case
-
-        if(!empty($_GET['code']) && isset($_GET['code']))
-         {
-            try { 
-                $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-            } catch (Exception $exc) {
-                $msg = "ERROR 101. Please contact your site administrator.";
-            } 
-           
-           $code=mysqli_real_escape_string($connection,$_GET['code']);
-           $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code'");
-
-           if(mysqli_num_rows($c) > 0)
-           {
-              $count=mysqli_query($connection,"SELECT uid,email FROM users WHERE activation='$code' and owner_authorized='0'");
-              if(mysqli_num_rows($count) == 1)
-              {
-                 mysqli_query($connection,"UPDATE users SET owner_authorized='1' WHERE activation='$code'");
-                 $msg="User account is activated";
-         $vals = mysqli_fetch_array($count);
-         $to=$vals['email'];
-                 $subject="webadmin.php - Login authorized";
-                 $base_url = $vars['site']['base_url'];
-                 $body='Hi ' .$to. ', <br/> <br/> Congratulations. The site owner has approved of your login to webadmin. <a href="'.$base_url.'">Login now</a>';
-                 $headers  = 'MIME-Version: 1.0' . "\r\n";
-                   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-                 mail($to, $subject, $body, $headers,'-froot@localhost'); 
-         
-           $clear_fields = false;
-              }
-              else
-              {
-                 $msg ="User account already active.";
-           $clear_fields = false;
-              }
-           } else {
-              $msg ="Wrong activation code.";
-          $clear_fields = false;
-           }
-           mysqli_close($connection);
-       print_and_reload($msg, 3,  $vars['site']['base_url']);
-        }
-     }  
-  }
-}
+} 
 
 function print_and_reload($msg, $seconds, $url){
        echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
@@ -3637,8 +3631,6 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
      listing_page(error($err_text,$verb,$cfile)); 
      die();
   }
-
-
 }
  
 function email_with_attach($orig, $new, $file){
@@ -3688,9 +3680,6 @@ function email_with_attach($orig, $new, $file){
     mail($to, $subject, $body, $headers); 
 }
 
-#get_all_paths("/var/www/proj/test.txt"); die();
-#get_all_paths("/var/www/proj/"); die();
-#get_all_paths("/home/test/.."); die();
 function get_all_paths($path){
    $pi = pathinfo($path);
    $txt = $pi['filename'];
@@ -3754,7 +3743,6 @@ function mail_admin($sub , $msg, $values, $query){
       if(strpos($var, 'URL')!== false){
           if($id==""){
 	     $id = md5(uniqid().time());
-
              $query = strtr($query, array('[[OWNER_KEY]]' => $id)); 
              $con = get_connection();
              mysqli_query($con, $query);
