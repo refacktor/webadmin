@@ -160,44 +160,96 @@ if(!isset($_SESSION['login'])){
      if(!empty($_GET['key']) && isset($_GET['key']))
       {
          try { 
-         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-  		$case_failure = 0;
+	         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+  		 $case_failure = 0;
          } catch (Exception $exc) {
-         $msg = "ERROR 101. Please contact your site administrator.";
+            $msg = "ERROR 101. Please contact your site administrator.";
          } 
     
         $code=mysqli_real_escape_string($connection,$_GET['key']);
 	$query="SELECT uid FROM users WHERE activation='$code'";
+        if($debug)
+           log_this(date(DATE_ATOM). ' query - ' . $query);
+
         $c=mysqli_query($connection,$query);
 
         if(mysqli_num_rows($c) > 0)
         {
-           $count=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code' and status='0'");
+	   $q1 = "SELECT uid FROM users WHERE activation='$code' and status='0'";
+           if($debug)
+              log_this(date(DATE_ATOM). ' query - ' . $q1);
+           $count=mysqli_query($connection, $q1);
            if(mysqli_num_rows($count) == 1)
            {
-              mysqli_query($connection,"UPDATE users SET status='1' WHERE activation='$code'");
-              $msg="Your account is activated";
-  		$case_failure = 0;
-            $clear_fields = true;
+	      $q2 = "UPDATE users SET status='1' WHERE activation='$code'";
+              mysqli_query($connection, $q2);
+	      if($debug)
+                 log_this(date(DATE_ATOM). ' query - ' . $q2);
+              $msg="Congratulations! Your account is successfully activated.";
+  	      $case_failure = 0;
+              $clear_fields = true;
            }
            else
            {
               $msg ="Your account is already active, no need to activate again";
-            $clear_fields = true;
-  		$case_failure = 0;
+              $clear_fields = true;
+  	      $case_failure = 0;
            }
         } else {
-         $msg ="Wrong activation code.";
-         $clear_fields = true;
-  		$case_failure = 0;
+            $msg ="Wrong activation code.";
+            $clear_fields = true;
+            $case_failure = 0;
         }
-    mysqli_close($connection); 
+        mysqli_close($connection); 
+      }
+
+     if(!empty($_GET['code']) && isset($_GET['code'])&& !empty($_GET['ownerk']) && isset($_GET['ownerk']))
+     {
+        try { 
+            $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+        } catch (Exception $exc) {
+            $msg = "ERROR 101. Please contact your site administrator.";
+        } 
+       
+       $code=mysqli_real_escape_string($connection,$_GET['code']);
+       $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
+       $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code' and owner_key='$ownerk'");
+ 
+       if(mysqli_num_rows($c) > 0)
+       {
+          $count=mysqli_query($connection,"SELECT uid,email FROM users WHERE activation='$code' and owner_authorized='0' and owner_key='$ownerk'");
+          if(mysqli_num_rows($count) == 1)
+          {
+             mysqli_query($connection,"UPDATE users SET owner_authorized='1' WHERE activation='$code' and owner_key='$ownerk'");
+             $vals = mysqli_fetch_array($count);
+             $to=$vals['email'];
+             $msg="User account - $to is successfully authorized.";
+             $subject="webadmin.php - Login authorized";
+             $base_url = $vars['site']['base_url'];
+             $body='Hi ' .$to. ', <br/> <br/> Congratulations. The site owner has approved of your login to webadmin. <a href="'.$base_url.'">Login now</a>';
+             $headers  = 'MIME-Version: 1.0' . "\r\n";
+             $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+             mail($to, $subject, $body, $headers,'-froot@localhost'); 
+             $clear_fields = true;
+          }
+          else
+          {
+             $msg ="User account already active.";
+             $clear_fields = true;
+          }
+       } else {
+          $msg ="Something went wrong. Either a wrong activation code or a wrong key was submitted. Contact your site administrator.";
+          $clear_fields = true;
+       }
+       mysqli_close($connection);
+       print_and_reload($msg, 3,  $vars['site']['base_url']);
      }
+    
      if(!empty($_GET['code']) && isset($_GET['code']))
      {
-       $msg = "Please contact site administrator for authorization."; 
-       $clear_fields = true;
-  		$case_failure = 0;
+         $msg = "Please contact site administrator for authorization."; 
+         $clear_fields = true;
+   	 $case_failure = 0;
      }
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   }  
@@ -239,12 +291,20 @@ if(!isset($_SESSION['login'])){
              $subject="webadmin.php - Email verification";
              $base_url = $vars['site']['base_url'];
              $body='Hi, <br/> <br/> We need to make sure you are human. Please verify your email and get started using your webadmin account. <br/> <br/> <a href="'.$base_url.'?activate=true&key='.$activation.'">'.$base_url.'?activate=true&key='.$activation.'</a>';
-             $body_admin='Hi, <br/> <br/> A new user - ' . $email. ' wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="'.$base_url.'?activate=true&code='.$activation.'">'.$base_url.'?activate=true&code='.$activation.'</a>';
-         $headers  = 'MIME-Version: 1.0' . "\r\n";
-         $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+             $headers  = 'MIME-Version: 1.0' . "\r\n";
+             $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
              mail($to, $subject, $body, $headers,'-froot@localhost'); 
-             mail($vars['site']['admin_mail'], 'New user activation', $body_admin, $headers,'-froot@localhost'); 
-             $msg= "Registration successful, please activate your email.";
+
+             // admin email 
+             $body_admin='Hi, <br/> <br/> A new user - [[USER]] wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="[[URL]]">[[URL]]</a>';
+             $values = array(
+  		  'USER' => $email,
+		  'URL' => $base_url . '?activate=true&code=' . $activation,
+		);
+             $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
+	     mail_admin('New user activation' , $body_admin, $values, $qu);
+
+             $msg= "Registration successful, please check your email.";
           } else {
              $msg= 'The email is already taken, please try new.';
                 $clear_fields = true;
@@ -333,63 +393,10 @@ if(!isset($_SESSION['login'])){
   } elseif ( (isset($_GET['action']) && $_GET['action']  == 'login' ) || (isset($_GET['action']) && $_GET['action']  == 'register' )){
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
   } 
-   #elseif ( (isset($_GET['activate']) && $_GET['activate']  == 'true' )){
-   #   show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,true);
-   #}
-
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
-} else {
-  // check if site admin
-  if($_SESSION['login'] == '0') {
-     if(isset($_GET['activate'])) {
-        // activation case
-
-        if(!empty($_GET['code']) && isset($_GET['code']))
-         {
-            try { 
-                $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-            } catch (Exception $exc) {
-                $msg = "ERROR 101. Please contact your site administrator.";
-            } 
-           
-           $code=mysqli_real_escape_string($connection,$_GET['code']);
-           $c=mysqli_query($connection,"SELECT uid FROM users WHERE activation='$code'");
-
-           if(mysqli_num_rows($c) > 0)
-           {
-              $count=mysqli_query($connection,"SELECT uid,email FROM users WHERE activation='$code' and owner_authorized='0'");
-              if(mysqli_num_rows($count) == 1)
-              {
-                 mysqli_query($connection,"UPDATE users SET owner_authorized='1' WHERE activation='$code'");
-                 $msg="User account is activated";
-         $vals = mysqli_fetch_array($count);
-         $to=$vals['email'];
-                 $subject="webadmin.php - Login authorized";
-                 $base_url = $vars['site']['base_url'];
-                 $body='Hi ' .$to. ', <br/> <br/> Congratulations. The site owner has approved of your login to webadmin. <a href="'.$base_url.'">Login now</a>';
-                 $headers  = 'MIME-Version: 1.0' . "\r\n";
-                   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-                 mail($to, $subject, $body, $headers,'-froot@localhost'); 
-         
-           $clear_fields = false;
-              }
-              else
-              {
-                 $msg ="User account already active.";
-           $clear_fields = false;
-              }
-           } else {
-              $msg ="Wrong activation code.";
-          $clear_fields = false;
-           }
-           mysqli_close($connection);
-       print_and_reload($msg, 3,  $vars['site']['base_url']);
-        }
-     }  
-  }
-}
+} 
 
 function print_and_reload($msg, $seconds, $url){
        echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
@@ -596,13 +603,42 @@ if(!empty($access_perm) && isset($access_perm) && $access_perm!="") {
 switch ($action) {
 
 case 'presetvalues':
- die('In preset values');
-# if(!empty($_GET['key']) && isset($_POST['key'])){
-# }else{
-# }
+ $messageOnly = false;
+ if(isset($_POST['password']) && !empty($_POST['password']) && isset($_POST['cpassword']) && !empty($_POST['cpassword']) && isset($_POST['key']) && !empty($_POST['key']))
+    {
+       $p = trim(mysql_escape_string($_POST['password']));
+       $cp = trim(mysql_escape_string($_POST['cpassword']));
+       $key = trim(mysql_escape_string($_POST['key']));
+       if(strlen($key)<32){
+	   $msg = "You have submitted an invalid key.";
+	   $_GET['key']=$key;
+       }else  if($p != $cp){
+	   $msg = "The passwords you have submitted do not match. Please try again.";
+	   $_GET['key']=$key;
+       } else { 
+           $connection =get_connection(); 
+           $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
+           $count = mysqli_query($connection,$query);
+           if(mysqli_num_rows($count) == 0){
+               $msg = "Please retry. There was no such request received or your account is under moderation.";
+	       $_GET['key']=$key;
+           }else{
+               $password = md5($p);
+	       $query = "UPDATE users SET password = '$password', activation='' WHERE activation = '$key'";
+               $t = mysqli_query($connection,$query);
+               $msg = "Your password has been successfully reset.";
+               $messageOnly=true;
+           }
+	   mysqli_close($connection);
+       }
+    }else{
+	   $msg = "Invalid password selected. Please try a new one.";
+    }    
+    show_register ($msg, 3, "", "", "", true, true,$messageOnly); 
 break;
 
 case 'preset':
+ $messageOnly = true;
  if(!empty($_GET['key']) && isset($_GET['key']))
     {
        $key = trim(mysql_escape_string($_GET['key']));
@@ -617,12 +653,13 @@ case 'preset':
 	   $passwords = trim(mysql_escape_string($_POST['password']));
            $password = md5($passwords);
 	   $msg = "Please fill with a new password.";
+	   $messageOnly=false;
        }
     }else{
         //invalid password reset attempt
        $msg = "Invalid password reset event.";
     }    
-    show_register ($msg, 3, "", "", "", true, true); 
+    show_register ($msg, 3, "", "", "", true, true,$messageOnly); 
 break;
 
 case 'forgot':
@@ -673,10 +710,6 @@ break;
 
 case 'read_access':
 
-   if(isset($_SESSION) && $_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
-
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -685,6 +718,7 @@ case 'read_access':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -692,12 +726,14 @@ case 'read_access':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
-
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0'");
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0' and file_access.owner_key='$ownerk'");
   
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0'");
+     mysqli_query($connection,"UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0' and owner_key='$ownerk'");
      $to=$get_email;
      $subject="webadmin.php - Read access granted";
      $body="Hi " . $get_email . ', <br/> Your request for read access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
@@ -706,16 +742,16 @@ case 'read_access':
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
      print_and_reload("Notified " .$get_email. " of read access granted to " .$get_path, 3, $vars['site']['base_url']);
   }else{
-       print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+     print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
   mysqli_close($connection);
 
   break;
 
 case 'read_deny':
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
 
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -725,6 +761,7 @@ case 'read_deny':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
   
    if ( $get_email == "" ){
@@ -733,12 +770,15 @@ case 'read_deny':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='0'");
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='0' and file_access.owner_key='" .$ownerk. "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid'] . "' and path = '" .$get_path. "' and access_type='0'");
+     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid'] . "' and path = '" .$get_path. "' and access_type='0' and owner_key='"  . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
      $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for read access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
@@ -757,9 +797,9 @@ case 'read_deny':
 
 case 'write_access':
 
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -768,6 +808,7 @@ case 'write_access':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -775,12 +816,16 @@ case 'write_access':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1'");
+
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1' and file_access.owner_key='" . $ownerk. "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1'");
+     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key='" . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Write access granted";
      $body="Hi " . $get_email . ', <br/> Your request for write access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
@@ -796,9 +841,9 @@ case 'write_access':
   break;
 
 case 'write_deny':
-   if($_SESSION['login']!='0'){
-       print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-    }  
+   //if($_SESSION['login']!='0'){
+   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
+   // }  
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -807,7 +852,7 @@ case 'write_deny':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
-
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
   
    if ( $get_email == "" ){
        print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
@@ -815,12 +860,15 @@ case 'write_deny':
    if ( $get_path == "" ){
        print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
     }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
 
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='1'");
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type='1' and file_access.owner_key='" . $ownerk . "'");
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1'");
+     mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key = '" . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
      $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for write access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
@@ -852,16 +900,20 @@ case 'read':
   }
   mysqli_close($connection);
 
-  $to=$vars['site']['admin_mail'];
-  $subject="webadmin.php - Read access required";
-  $body="Hi, <br/>User " . $_SESSION['mail'] . ' needs read access to ' . $file . '. You can grant it by clicking the link below: <br/><br/>';
-  $body.='<a href="' .$vars['site']['base_url']. '?action=read_access&file='.$file.'&user='.$_SESSION['mail'] . '">Grant read access</a>.';
-  $body.='You can deny it by clicking the link below:<br/><a href="' .$vars['site']['base_url']. '?action=read_deny&file='.$file.'&user='.$_SESSION['mail'] . '">Deny read access</a>.<br/>Thanks.';
-  $headers  = 'MIME-Version: 1.0' . "\r\n";
-  $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-  mail($to, $subject, $body, $headers,'-froot@localhost'); 
-  print_and_reload("Notified site owner for a read access to " .$file, 3, $vars['site']['base_url']);
 
+  /////////// admin_mail ////////////////////
+  $body_admin='Hi, <br/>User - [[USER]]  needs read access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+  $body_admin.='<a href="[[URL1]]">Grant read access</a>.<br/>';
+  $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny read access</a>.<br/>Thanks.';
+  $values = array('USER' => $_SESSION['mail'],
+		  'URL1' => $vars['site']['base_url']. '?action=read_access&file=' . $file . '&user=' . $_SESSION['mail'],
+		  'URL2' => $vars['site']['base_url']. '?action=read_deny&file=' . $file . '&user=' . $_SESSION['mail']
+		);
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  mail_admin('webadmin.php - Read access required' , $body_admin, $values, $qu);
+  /////////// admin_mail end ////////////////////
+  
+  print_and_reload("Notified site owner for a read access to " .$file, 3, $vars['site']['base_url']);
 break;
 
 case 'write':
@@ -882,14 +934,18 @@ case 'write':
   }
   mysqli_close($connection);
  
-  $to=$vars['site']['admin_mail'];
-  $subject="webadmin.php - Write access required";
-  $body="Hi, <br/>User " . $_SESSION['mail'] . ' needs write access to ' . $file . '. You can grant it by clicking the link below: <br/><br/>';
-  $body.='<a href="' .$vars['site']['base_url']. '?action=write_access&file='.$file.'&user='.$_SESSION['mail'] . '">Grant write access</a>.';
-  $body.='You can deny it by clicking the link below:<br/><a href="' .$vars['site']['base_url']. '?action=write_deny&file='.$file.'&user='.$_SESSION['mail'] . '">Deny write access</a>.<br/>Thanks.';
-  $headers  = 'MIME-Version: 1.0' . "\r\n";
-  $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-  mail($to, $subject, $body, $headers,'-froot@localhost'); 
+  /////////// admin_mail ////////////////////
+  $body_admin='Hi, <br/>User - [[USER]]  needs write access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+  $body_admin.='<a href="[[URL1]]">Grant write access</a>.<br/>';
+  $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny read access</a>.<br/>Thanks.';
+  $values = array('USER' => $_SESSION['mail'],
+		  'URL1' => $vars['site']['base_url']. '?action=write_access&file=' . $file . '&user=' . $_SESSION['mail'],
+		  'URL2' => $vars['site']['base_url']. '?action=write_deny&file=' . $file . '&user=' . $_SESSION['mail']
+		);
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  mail_admin('webadmin.php - Write access required' , $body_admin, $values, $qu);
+  /////////// admin_mail end ////////////////////
+ 
   print_and_reload("Notified site owner for a write access to " .$file, 3, $vars['site']['base_url']);
 
 break;
@@ -3413,167 +3469,172 @@ function error ($phrase) {
 
 }
 
-function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login) {
-
- global $vars;
- if($show_login){
-    html_header();
-
-    if($clear_fields){
-	$email = "";
-	$passwords = "";
-	$justification = "";
+function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login, $onlyMessage=false) {
+    global $vars,$debug;
+    if($debug)
+    {
+       $args = func_get_args();
+       log_this(date(DATE_ATOM). ' call show_register - ' . return_var_dump($args));
     }
-    echo '
-<script type="text/javascript">
-<!--
-function toggle(id,msg){
-   var e = document.getElementById("login_div");
-   var f = document.getElementById("register_div");
-   var g = document.getElementById("msg_login");
-   var h = document.getElementById("msg_register");
-   var i = document.getElementById("forgot_div");
-   var j = document.getElementById("msg_forgot");
-   var k = document.getElementById("reset_div");
-   var l = document.getElementById("msg_reset");
-
-
-   if(id == 1){
-      e.style.display =  "none";
-      i.style.display =  "none";
-      l.style.display =  "none";
-      f.style.display =  "block";
-      g.innerHTML="";
-      l.innerHTML="";
-      j.innerHTML="";
-   } else if (id == 2){
-      f.style.display =  "none";
-      l.style.display =  "none";
-      e.style.display =  "none";
-      i.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      l.innerHTML="";
-   } else if (id == 3){
-      i.style.display =  "none";
-      f.style.display =  "none";
-      e.style.display =  "none";
-      l.style.display =  "block";
-      g.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   } else{
-      f.style.display =  "none";
-      l.style.display =  "none";
-      i.style.display =  "none";
-      e.style.display =  "block";
-      l.innerHTML="";
-      h.innerHTML="";
-      j.innerHTML="";
-   }
-}
-  //-->
-</script>
-<body style="margin-left: auto; margin-right: auto;">
-<h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
-<span style="padding: 15px;">
-<div id="login_div" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=login" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
-<tr/>
-<tr>
-<td>Password </td>
-<td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
-<td><a href="javascript:toggle(2);">Forgot Password</a></td>
-</tr>
-<tr>
-<td>
-<input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
-<tr>
-<td colspan="3">
-<span class="msg" id="msg_login">' . $msg . '</span>
-</td></tr>
-</table>
-</form>
-</div>
-
-<div id="register_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=register" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-<tr>
-<td>Password</td>
-<td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
-<a href="javascript:toggle();">Login</a></td><td>
-<input type="hidden" name="register" value="true" />
-<input type="submit" class="button" value="Register" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_register">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
-<div id="forgot_div" style="display:none" align="center">
-<form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
-<table>
-<tr>
-<td>Email</td>
-<td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
-</td></tr>
-<tr><td>
-<input type="hidden" name="forgot" value="true" />
-<input type="submit" class="button" value="Recover password" /></td></tr>
-<tr><td colspan="3">
-<span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
-</table>
-</form>
-</div>
+    
+    if($show_login){
+       html_header();
+   
+       if($clear_fields){
+          $email = "";
+       	  $passwords = "";
+          $justification = "";
+       }
+       echo '
+        <script type="text/javascript">
+        <!--
+        function toggle(id,msg){
+           var e = document.getElementById("login_div");
+           var f = document.getElementById("register_div");
+           var g = document.getElementById("msg_login");
+           var h = document.getElementById("msg_register");
+           var i = document.getElementById("forgot_div");
+           var j = document.getElementById("msg_forgot");
+           var k = document.getElementById("reset_div");
+           var l = document.getElementById("msg_reset");
+        
+        
+           if(id == 1){
+              e.style.display =  "none";
+              i.style.display =  "none";
+              k.style.display =  "none";
+              f.style.display =  "block";
+              g.innerHTML="";
+              l.innerHTML="";
+              j.innerHTML="";
+           } else if (id == 2){
+              f.style.display =  "none";
+              k.style.display =  "none";
+              e.style.display =  "none";
+              i.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              l.innerHTML="";
+           } else if (id == 3){
+              i.style.display =  "none";
+              f.style.display =  "none";
+              e.style.display =  "none";
+              k.style.display =  "block";
+              g.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           } else{
+              f.style.display =  "none";
+              k.style.display =  "none";
+              i.style.display =  "none";
+              e.style.display =  "block";
+              l.innerHTML="";
+              h.innerHTML="";
+              j.innerHTML="";
+           }
+        }
+          //-->
+        </script>
+        <body style="margin-left: auto; margin-right: auto;">
+        <h1 style="margin-bottom: 0"><a href="'. $vars['site']['base_url'] . '">webadmin.php</a></h1>
+        <span style="padding: 15px;">
+        <div id="login_div" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=login" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="login_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/></td>
+        <tr/>
+        <tr>
+        <td>Password </td>
+        <td><input id="login_password" type="password" name="password" class="input" autocomplete="off" value="' . $passwords . '"/></td>
+        <td><a href="javascript:toggle(2);">Forgot Password</a></td>
+        </tr>
+        <tr>
+        <td>
+        <input type="submit" class="button" value="Login" /></td><td colspan="2"><a href="javascript:toggle(1);">Register</a></td></tr>
+        <tr>
+        <td colspan="3">
+        <span class="msg" id="msg_login">' . $msg . '</span>
+        </td></tr>
+        </table>
+        </form>
+        </div>
+        
+        <div id="register_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=register" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="register_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        <tr>
+        <td>Password</td>
+        <td><input id="register_password" type="password" name="password" class="input" autocomplete="off" value="'.$passwords.'"/></td></tr>
+        <tr><td>Justification </td><td>
+        <input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+        <a href="javascript:toggle();">Login</a></td><td>
+        <input type="hidden" name="register" value="true" />
+        <input type="submit" class="button" value="Register" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_register">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
+        <div id="forgot_div" style="display:none" align="center">
+        <form action="' . $vars['site']['base_url'] . '?action=forgot" method="post">
+        <table>
+        <tr>
+        <td>Email</td>
+        <td><input id="forgot_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
+        </td></tr>
+        <tr><td>
+        <input type="hidden" name="forgot" value="true" />
+        <input type="submit" class="button" value="Recover password" /></td></tr>
+        <tr><td colspan="3">
+        <span class="msg" id="msg_forgot">' . $msg . '</span></td></tr>
+        </table>
+        </form>
+        </div>
 <div id="reset_div" style="display:none" align="center">
 <form action="' . $vars['site']['base_url'] . '?action=presetvalues" method="post">
 <table>
-<tr>
-<td>Email</td>
-<td><input id="reset_email" type="text" name="email" class="input" autocomplete="off" value="' .$email. '"/><br/>
 <tr>
 <td>Password</td>
 <td><input id="reset_password" type="password" name="password" class="input" autocomplete="off" value=""/></td></tr>
 <tr>
 <td>Confirm Password</td>
-<td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/></td></tr>
-<tr><td>Justification </td><td>
-<input type="text" id="register_justification" name="justification" class="input" autocomplete="off" value="' .$justification. '"/><td/></tr><tr><td>
+<td><input id="reset_cpassword" type="password" name="cpassword" class="input" autocomplete="off" value=""/>
+<input id="key" type="hidden" name="key" value="' . $_GET['key']  .'"/></td></tr>
+</td></tr>
+<tr><td>
 <a href="javascript:toggle();">Login</a></td><td>
 <input type="hidden" name="presetvalues" value="true" />
 <input type="submit" class="button" value="Change password" /></td></tr>
 <tr><td colspan="3">
-<span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
 </table>
 </form>
 </div>
 
-
-</span>
- ';
+<span class="msg" id="msg_reset">' . $msg . '</span></td></tr>
+        </span>
+         ';
     html_footer();
-    echo '<script>toggle(' .$case_failure. ');</script>';
+    if($onlyMessage)
+       echo '<script>toggle(' .$case_failure. ', "", true);</script>';
+    else
+       echo '<script>toggle(' .$case_failure. ');</script>';
     global $vars, $die_and_reload;
-    if($die_and_reload){
-	echo '<script type="text/javascript">
-	function doReload(){
-	<!--
-	window.location = "' . $vars['site']['base_url'] . '"
-	//-->
-	}
-        setInterval("doReload()", 3000);
-	</script>';
-    }
-    die();
+        if($die_and_reload){
+             echo '<script type="text/javascript">
+             function doReload(){
+             <!--
+             window.location = "' . $vars['site']['base_url'] . '"
+             //-->
+             }
+             setInterval("doReload()", 3000);
+             </script>';
+        }
+        die();
   }
 }
 
@@ -3617,8 +3678,6 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
      listing_page(error($err_text,$verb,$cfile)); 
      die();
   }
-
-
 }
  
 function email_with_attach($orig, $new, $file){
@@ -3668,9 +3727,6 @@ function email_with_attach($orig, $new, $file){
     mail($to, $subject, $body, $headers); 
 }
 
-#get_all_paths("/var/www/proj/test.txt"); die();
-#get_all_paths("/var/www/proj/"); die();
-#get_all_paths("/home/test/.."); die();
 function get_all_paths($path){
    $pi = pathinfo($path);
    $txt = $pi['filename'];
@@ -3713,4 +3769,42 @@ function return_var_dump(){
    return ob_get_clean();
 }
 
+/**
+*   $body='Hi, <br/> <br/> A new user - ' . $email. ' wants to activate his/her account. Please authorize by visiting the attached link. <br/> <br/> <a href="%%URL%%">%%URL%%</a>';
+
+$values : These are the strings that need to be replaced.
+  ('USERNAME' => 'purple.coder@yahoo.co.uk', 'URL1' => 'test.com/test.php', 'URL2' => 'test.com/test2.php')
+ 
+*
+*/
+
+function mail_admin($sub , $msg, $values, $query){
+   global $vars, $debug;
+   $to=$vars['site']['admin_mail'];
+   $subject=$sub;
+   $map = array();
+   $pattern = '[[%s]]';
+   $id = "";
+   foreach($values as $var => $value)
+   {
+      if(strpos($var, 'URL')!== false){
+          if($id==""){
+	     $id = md5(uniqid().time());
+             $query = strtr($query, array('[[OWNER_KEY]]' => $id));
+             if($debug)
+		   log_this(date(DATE_ATOM). ' query - ' . $query);
+             $con = get_connection();
+             mysqli_query($con, $query);
+	     mysqli_close($con);
+          }
+          $value.="&ownerk=" . $id;
+      }
+      $map[sprintf($pattern, $var)] = $value;
+   }
+   $msg = strtr($msg, $map); 
+   $body = $msg;
+   $headers  = 'MIME-Version: 1.0' . "\r\n";
+   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+}
 ?>
