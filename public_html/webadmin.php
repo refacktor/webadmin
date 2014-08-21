@@ -303,23 +303,23 @@ if(!isset($_SESSION['login'])){
 		);
              $qu = "UPDATE users SET owner_key='[[OWNER_KEY]]' WHERE email='$email'"; 
 	     mail_admin('New user activation' , $body_admin, $values, $qu);
-
              $msg= "Registration successful, please check your email.";
+             $case_failure = 0;
+             $clear_fields = true;
           } else {
              $msg= 'The email is already taken, please try new.';
-                $clear_fields = true;
+             $clear_fields = true;
           }
         mysqli_close($connection); 
        } else {
            $msg = 'The email you have entered is invalid, please try again.';
-       $clear_fields = false;
+           $clear_fields = false;
        }
     } else {
-    $msg = "Please fill all three fields: email, name and justification for registration!";
-    $clear_fields = false;
-  	$case_failure = 1;
+       $msg = "Please fill all three fields: email, name and justification for registration!";
+       $clear_fields = false;
+       $case_failure = 1;
     }
-
   } else {
     // case login
     
@@ -341,7 +341,7 @@ if(!isset($_SESSION['login'])){
               $_SESSION['login'] = "0";
               $_SESSION['mail'] = $email;
               print_and_reload('Logging in as admin.', 2, $vars['site']['base_url']);
-           }
+            }
  
           try { 
              $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -355,22 +355,22 @@ if(!isset($_SESSION['login'])){
           if($cnt>1) {
                  $msg = "ERROR 102. Please contact your site administrator.";
               }else if ( $cnt == 0 ) {
-             $msg = "Invalid email and/or password combination.";
-             $clear_fields = false;
-          }else if ( $cnt == 1 ){
-             $vals = mysqli_fetch_array($count);    
-             if ($vals['status'] != '1'){
-            $msg = "You have not yet activated your email.";
-                $clear_fields = false;
-             } else if ($vals['owner_authorized'] != '1') {
-            $msg = "Your account is awaiting site owner's authorization.";
-                $clear_fields = false;
-             } else {
-          		 $_SESSION['login'] = $vals['uid'];
-            	 $_SESSION['mail'] = $email;
-                     header("refresh: 0;");
-             } 
-          }
+                 $msg = "Invalid email and/or password combination.";
+                 $clear_fields = false;
+              }else if ( $cnt == 1 ){
+                 $vals = mysqli_fetch_array($count);    
+                 if ($vals['status'] != '1'){
+                    $msg = "You have not yet activated your email.";
+                    $clear_fields = false;
+                 } else if ($vals['owner_authorized'] != '1') {
+                    $msg = "Your account is awaiting site owner's authorization.";
+                    $clear_fields = false;
+                 } else {
+          	    $_SESSION['login'] = $vals['uid'];
+            	    $_SESSION['mail'] = $email;
+                    header("refresh: 0;");
+                 }    
+              }
           mysqli_close($connection);
        }else{
             $msg = "The email you entered is invalid.";
@@ -381,9 +381,10 @@ if(!isset($_SESSION['login'])){
         if(isset($_POST))
           $msg = "Please fill email and password fields..";
         $clear_fields = false;
+	$case_failure=0;
      } 
   }
-  if( (isset($_GET['action']) && $_GET['action']=='view') ||  (isset($_GET['action']) && $_GET['action']=='login')){
+  if((isset($_GET['action']) && $_GET['action']=='view') ||  (isset($_GET['action']) && $_GET['action']=='login')){
      if(isset($msg) && $msg!=""){
         show_register($msg,0 , "", "", "","",true);
      }else{
@@ -421,7 +422,6 @@ function take_url_to($url){
            setInterval("doReload()", ' . ($seconds * 1000). ');
            </script>';
            die();
-
 }
 
 /* Your language:
@@ -3468,6 +3468,14 @@ function error ($phrase) {
 ';
 
 }
+
+/**
+* case_failure 
+* 0 : login
+* 1 : register
+* 2 : forgot password
+* 3 : reset password
+*/
 
 function show_register ($msg, $case_failure, $email, $passwords, $justification, $clear_fields, $show_login, $onlyMessage=false) {
     global $vars,$debug;
