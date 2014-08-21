@@ -3661,10 +3661,14 @@ function close_connection($con){
 }
 
 function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $cfile){
-  global $vars;
+  global $vars,$debug;
   if(!isset($_SESSION) or (array_key_exists('login', $_SESSION) == false)){
         #show_register("Please login to copy the files.","" , "", "", "","",true);
         show_register($msg_show_register,"" , "", "", "","",true);
+  }
+
+  if($debug){
+     log_this(date(DATE_ATOM). ' query - ' . $query);
   }
 
   $con = get_connection();
@@ -3673,6 +3677,7 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
         //if(!@is_dir($file))
     {
         #$res = mysqli_query($con, "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path='".$file."'");
+
         $res = mysqli_query($con, $query);
         if(mysqli_num_rows($res)<1){
             $read_access=false;
