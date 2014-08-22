@@ -497,6 +497,10 @@ if (function_exists('php_uname')) {
   $win = ($delim == '\\') ? true : false;
 }
 
+//die(" all paths - " . get_all_paths('C:\xampp\htdocs'));
+//die(" all paths - " . get_all_paths('C:\xampp\htdocs\test.txt'));
+//die(" all paths - " . get_all_paths('C:\xampp\My htdocs\t-test.txt\file'));
+
 if (!empty($_SERVER['PATH_TRANSLATED'])) {
   $scriptdir = dirname($_SERVER['PATH_TRANSLATED']);
 } elseif (!empty($_SERVER['SCRIPT_FILENAME'])) {
@@ -709,7 +713,7 @@ case 'forgot':
 break;
 
 case 'read_access':
-
+   global $debug;
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -718,6 +722,7 @@ case 'read_access':
 
    $get_email=mysqli_real_escape_string($connection,$_GET['user']);
    $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $get_pathsl = addslashes($get_path);
    $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
 
    if ( $get_email == "" ){
@@ -729,18 +734,24 @@ case 'read_access':
    if ( $ownerk == "" ){
        print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
     }
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0' and file_access.owner_key='$ownerk'");
+   $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0' and file_access.owner_key='$ownerk'";
+   if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $squery);
+   $c=mysqli_query($connection,$squery);
   
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0' and owner_key='$ownerk'");
+	 $squery1="UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0' and owner_key='$ownerk'";
+	 if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $squery1);
+     mysqli_query($connection,$squery1);
      $to=$get_email;
      $subject="webadmin.php - Read access granted";
-     $body="Hi " . $get_email . ', <br/> Your request for read access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
+     $body="Hi " . $get_email . ', <br/> Your request for read access to ' . stripslashes($get_path). ' has been granted. <br/><br/>Thanks.';
      $headers  = 'MIME-Version: 1.0' . "\r\n";
      $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of read access granted to " .$get_path, 3, $vars['site']['base_url']);
+     print_and_reload("Notified " .$get_email. " of read access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
   }else{
      print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
@@ -749,9 +760,6 @@ case 'read_access':
   break;
 
 case 'read_deny':
-   //if($_SESSION['login']!='0'){
-   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-   // }  
 
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
@@ -781,11 +789,11 @@ case 'read_deny':
      mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid'] . "' and path = '" .$get_path. "' and access_type='0' and owner_key='"  . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
-     $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for read access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
+     $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for read access to ' . stripslashes($get_path) . ' has been denied. <br/><br/>Thanks.';
      $headers  = 'MIME-Version: 1.0' . "\r\n";
      $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of read access denied to " .$get_path, 3, $vars['site']['base_url']);
+     print_and_reload("Notified " .$get_email. " of read access denied to " . stripslashes($get_path), 3, $vars['site']['base_url']);
   }else{
        print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
@@ -796,10 +804,7 @@ case 'read_deny':
 
 
 case 'write_access':
-
-   //if($_SESSION['login']!='0'){
-   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-   // }  
+   global $debug;
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -820,19 +825,24 @@ case 'write_access':
        print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
     }  
 
-
-   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1' and file_access.owner_key='" . $ownerk. "'");
+   $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1' and file_access.owner_key='" . $ownerk. "'";
+   if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $squery);
+   $c=mysqli_query($connection, $squery);
 
   if($c && mysqli_num_rows($c) >0){
      $row = mysqli_fetch_assoc($c);
-     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key='" . $ownerk . "'");
+	 $squery1 = "UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key='" . $ownerk . "'";
+	 if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $squery1);
+     mysqli_query($connection, $squery1);
      $to=$get_email;
      $subject="webadmin.php - Write access granted";
-     $body="Hi " . $get_email . ', <br/> Your request for write access to ' . $get_path. ' has been granted. <br/><br/>Thanks.';
+     $body="Hi " . $get_email . ', <br/> Your request for write access to ' . stripslashes($get_path) . ' has been granted. <br/><br/>Thanks.';
      $headers  = 'MIME-Version: 1.0' . "\r\n";
      $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of write access granted to " .$get_path, 3, $vars['site']['base_url']);
+     print_and_reload("Notified " .$get_email. " of write access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
   }else{
        print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
@@ -841,9 +851,6 @@ case 'write_access':
   break;
 
 case 'write_deny':
-   //if($_SESSION['login']!='0'){
-   //    print_and_reload("ERROR 103. Please contact your site administrator", 3, $vars['site']['base_url']);
-   // }  
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -871,11 +878,11 @@ case 'write_deny':
      mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key = '" . $ownerk . "'");
      $to=$get_email;
      $subject="webadmin.php - Read access denied";
-     $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for write access to ' . $get_path. ' has been denied. <br/><br/>Thanks.';
+     $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for write access to ' . stripslashes($get_path) . ' has been denied. <br/><br/>Thanks.';
      $headers  = 'MIME-Version: 1.0' . "\r\n";
      $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
      mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of write access denied to " .$get_path, 3, $vars['site']['base_url']);
+     print_and_reload("Notified " .$get_email. " of write access denied to " .stripslashes($get_path), 3, $vars['site']['base_url']);
   }else{
      print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
   }
@@ -885,18 +892,25 @@ case 'write_deny':
 
 case 'read':
   $file = relative2absolute($file);
+  $filesl = addslashes($file);
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
        $msg = "ERROR 101. Please contact your site administrator.";
    } 
   
-  $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $file . "' and access_type='0'");
+  $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $filesl . "' and access_type='0'");
 
   if($c && mysqli_num_rows($c) >0){
-     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$file. "' and access_type='0'");
+     $uquery = "UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='0'";
+	 if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $uquery);
+     mysqli_query($connection,$uquery);
   }else{
-     mysqli_query($connection,"INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$file. "', '0', '0','')");
+     $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '0', '0','')";
+	 if($debug)
+	    log_this(date(DATE_ATOM). ' query - ' . $iquery);
+     mysqli_query($connection,$iquery);
   }
   mysqli_close($connection);
 
@@ -909,7 +923,7 @@ case 'read':
 		  'URL1' => $vars['site']['base_url']. '?action=read_access&file=' . $file . '&user=' . $_SESSION['mail'],
 		  'URL2' => $vars['site']['base_url']. '?action=read_deny&file=' . $file . '&user=' . $_SESSION['mail']
 		);
-  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
   mail_admin('webadmin.php - Read access required' , $body_admin, $values, $qu);
   /////////// admin_mail end ////////////////////
   
@@ -923,14 +937,15 @@ case 'write':
        $msg = "ERROR 101. Please contact your site administrator.";
    } 
   $file = relative2absolute($file);
+  $filesl = addslashes($file);
  
-  $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $file . "' and access_type='1'");
+  $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $filesl . "' and access_type='1'");
 
   if($c && mysqli_num_rows($c) >0){
     // update 
-     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$file. "' and access_type='1'");
+     mysqli_query($connection,"UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='1'");
   }else{
-     mysqli_query($connection,"INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$file. "', '1', '0','')");
+     mysqli_query($connection,"INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '1', '0','')");
   }
   mysqli_close($connection);
  
@@ -942,7 +957,7 @@ case 'write':
 		  'URL1' => $vars['site']['base_url']. '?action=write_access&file=' . $file . '&user=' . $_SESSION['mail'],
 		  'URL2' => $vars['site']['base_url']. '?action=write_deny&file=' . $file . '&user=' . $_SESSION['mail']
 		);
-  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$file'"; 
+  $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
   mail_admin('webadmin.php - Write access required' , $body_admin, $values, $qu);
   /////////// admin_mail end ////////////////////
  
@@ -2101,7 +2116,7 @@ function listing ($list) {
 
    echo '  </td>';
     if(isset($_SESSION['login'])){
-       global $vars;
+       global $vars, $debug;
        echo '<td>';
        #if($file['is_file'])
        {
@@ -2110,8 +2125,10 @@ function listing ($list) {
          } catch (Exception $exc) {
          $msg = "ERROR 101. Please contact your site administrator.";
          }
-         $cnt=mysqli_query($connection,"SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "");
-    #echo "SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "";
+      $qi = "SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "";
+	  if($debug)
+		 log_this(date(DATE_ATOM). ' query - ' . $qi);
+     $cnt=mysqli_query($connection,$qi);
      if($cnt){ 
        $can_write=-1;
        $can_read=-1;
@@ -3675,9 +3692,9 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
   $read_access=true; 
   foreach ($files as $file) {
         //if(!@is_dir($file))
-    {
-        #$res = mysqli_query($con, "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path='".$file."'");
-
+    {        
+		if($debug)
+		   log_this(date(DATE_ATOM). ' query - ' . $query);
         $res = mysqli_query($con, $query);
         if(mysqli_num_rows($res)<1){
             $read_access=false;
@@ -3740,33 +3757,70 @@ function email_with_attach($orig, $new, $file){
     mail($to, $subject, $body, $headers); 
 }
 
+
+
 function get_all_paths($path){
-   $pi = pathinfo($path);
-   $txt = $pi['filename'];
-   $ext = $pi['extension'];
-  
-   if($txt!="" && $ext!="")
-      $str = substr($path, 0, strpos($path, $txt.'.' .$ext));
-   else{
-      $path = relative2absolute($path);
-      $str = $path;
-   }
-   $in="('/', ";
-   $terms = explode('/', $str);
-   $p="";
+   global $win,$delim;
+   $in ="";
    
-   foreach ($terms as $t){
-     if($t == '') continue;
-     $p.= $t . '/';
-     $in.="'/" .$p. "',"; 
+   if ($win) {
+       $in="(";
+	   $pi = pathinfo($path);
+	   $txt = $pi['filename'];
+	   $ext = $pi['extension'];
+	  
+	   if($txt!="" && $ext!="")
+		  $str = substr($path, 0, strpos($path, $txt.'.' .$ext));
+	   else{
+		  $path = relative2absolute($path);
+		  $str = $path;
+	   }
+       $terms = explode($delim, $str);
+	   $p="";
+	   
+	   foreach ($terms as $t){
+		 if($t == '') continue;
+		 $p.= $t . $delim;		 
+		 $in.= "'". addslashes($p). "',"; 
+	   }
+	   $in = substr($in, 0, strlen($in)-1);
+	   if(!is_dir($path))
+		  $in.=",'" . addslashes($path) .  "')";
+	   else{ 
+		  $path = relative2absolute($path);
+		  $in.=")";
+	   }
+	   
+   
+   } else {
+	   $pi = pathinfo($path);
+	   $txt = $pi['filename'];
+	   $ext = $pi['extension'];
+	  
+	   if($txt!="" && $ext!="")
+		  $str = substr($path, 0, strpos($path, $txt.'.' .$ext));
+	   else{
+		  $path = relative2absolute($path);
+		  $str = $path;
+	   }
+	   $in="('/', ";
+	   $terms = explode('/', $str);
+	   $p="";
+	   
+	   foreach ($terms as $t){
+		 if($t == '') continue;
+		 $p.= $t . '/';
+		 $in.="'/" .$p. "',"; 
+	   }
+	   $in = substr($in, 0, strlen($in)-1);
+	   if(!is_dir($path))
+		  $in.=",'" . $path .  "')";
+	   else{ 
+		  $path = relative2absolute($path);
+		  $in.=")";
+	   }
    }
-   $in = substr($in, 0, strlen($in)-1);
-   if(!is_dir($path))
-      $in.=",'" . $path .  "')";
-   else{ 
-      $path = relative2absolute($path);
-      $in.=")";
-   }
+
    #echo $in;
    return $in;
 }
@@ -3818,6 +3872,12 @@ function mail_admin($sub , $msg, $values, $query){
    $body = $msg;
    $headers  = 'MIME-Version: 1.0' . "\r\n";
    $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+   
+   mail($to, $subject, $body, $headers,'-froot@localhost');
+   if($debug){
+	  log_this(date(DATE_ATOM). ' mail subject - ' . $subject);   
+	  log_this(date(DATE_ATOM). ' mail to - ' . $to);   
+	  log_this(date(DATE_ATOM). ' mail body - ' . $body);   
+   }
 }
 ?>
