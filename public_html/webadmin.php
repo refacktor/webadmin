@@ -606,6 +606,52 @@ if(!empty($access_perm) && isset($access_perm) && $access_perm!="") {
 
 switch ($action) {
 
+case 'askpermission':
+   global $vars;
+   $p = trim(mysql_escape_string($_POST['fileperm']));
+   $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
+
+   $file = relative2absolute($p);
+   $filesl = addslashes($file);
+   $at = ($cp=='read') ? '0':'1';
+
+   try { 
+       $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+   } catch (Exception $exc) {
+       $msg = "ERROR 101. Please contact your site administrator.";
+   } 
+   
+   $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $filesl . "' and access_type='$at'");
+ 
+   if($c && mysqli_num_rows($c) >0){
+      $uquery = "UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='$at'";
+      if($debug)
+         log_this(date(DATE_ATOM). ' query - ' . $uquery);
+      mysqli_query($connection,$uquery);
+   }else{
+      $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '$at', '0','')";
+      if($debug)
+        log_this(date(DATE_ATOM). ' query - ' . $iquery);
+      mysqli_query($connection,$iquery);
+   }
+   mysqli_close($connection);
+ 
+   /////////// admin_mail ////////////////////
+   $body_admin='Hi, <br/>User - [[USER]]  needs ' . $cp . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+   $body_admin.='<a href="[[URL1]]">Grant ' .$cp. '  access</a>.<br/>';
+   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .$cp. ' access</a>.<br/>Thanks.';
+   $values = array('USER' => $_SESSION['mail'],
+ 		  'URL1' => $vars['site']['base_url']. '?action=read_access&file=' . $file . '&user=' . $_SESSION['mail'],
+ 		  'URL2' => $vars['site']['base_url']. '?action=read_deny&file=' . $file . '&user=' . $_SESSION['mail']
+ 		);
+   $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
+   mail_admin('webadmin.php - ' .ucfirst($cp). ' access required' , $body_admin, $values, $qu);
+   /////////// admin_mail end ////////////////////
+  
+   print_and_reload("Notified site owner for a $cp access to " .$file, 3, $vars['site']['base_url']);
+
+break;
+
 case 'presetvalues':
  $messageOnly = false;
  if(isset($_POST['password']) && !empty($_POST['password']) && isset($_POST['cpassword']) && !empty($_POST['cpassword']) && isset($_POST['key']) && !empty($_POST['key']))
@@ -1983,9 +2029,7 @@ function listing ($list) {
 
   echo '  <th class="functions">' . word('functions') . '</th>';
 
-  if(isset($_SESSION['login']))
-     echo '  <th class="access">' . word('access') . '</th>
-</tr>
+     echo ' </tr>
 ';
 
   for ($i = 0; $i < sizeof($list); $i++) {
@@ -2115,80 +2159,7 @@ function listing ($list) {
     }
 
    echo '  </td>';
-    if(isset($_SESSION['login'])){
-       global $vars, $debug;
-       echo '<td>';
-       #if($file['is_file'])
-       {
-     try { 
-         $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-         } catch (Exception $exc) {
-         $msg = "ERROR 101. Please contact your site administrator.";
-         }
-      $qi = "SELECT `access_type`, `owner_authorized` FROM `file_access`  WHERE  uid='" . $_SESSION['login'] . "' and path in " . get_all_paths($file['path']) . "";
-	  if($debug)
-		 log_this(date(DATE_ATOM). ' query - ' . $qi);
-     $cnt=mysqli_query($connection,$qi);
-     if($cnt){ 
-       $can_write=-1;
-       $can_read=-1;
-           while($r = mysqli_fetch_assoc($cnt))
-       {
-        #print_r($r);
-        #echo '<hr/>';
-        if($r['access_type']=='0'){
-                  // read
-                  if($r['owner_authorized'] == '1'){
-                   $can_read=1;
-                  }else{
-                   $can_read=0;
-                  }
-            }else if($r['access_type']=='1'){
-                  // write
-                  if($r['owner_authorized'] == '1'){
-                   $can_write=1;
-                  }else{    
-                   $can_write=0;
-                  }
-            }
-       }
 
-       if($can_write==1){
-        //RW
-        echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
-           <input class="small" type="submit" name="Write'. $i . '" value="Can Write" disabled />';
-       }else if($can_write==0 && $can_read<=0){
-            //W pending
-            echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"  disabled />
-           <input class="small" type="submit" name="Write'. $i . '" value="Write Pending" disabled />';
-       }else if($can_write==0 && $can_read==1){
-            //Read, W pending
-            echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
-           <input class="small" type="submit" name="Write'. $i . '" value="Write Pending" disabled />';
-       }else if($can_write==-1 && $can_read==0){
-            //R pending    
-        echo '<input class="small" type="submit" name="Read'. $i .'" value="Read Pending"  disabled />
-           <input class="small" type="submit" name="Write'. $i . '" value="Write" />';
-       }else if($can_read==1){
-        //R        
-        echo '<input class="small" type="submit" name="Read'. $i .'" value="Can Read"  disabled />
-           <input class="small" type="submit" name="Write'. $i . '" value="Write"  />';
-
-       }else{
-        echo '<input class="small" type="submit" name="Read'. $i .'" value="Read" />
-           <input class="small" type="submit" name="Write'. $i . '" value="Write"  />';
-       }
-        
-       echo '</td>';
-        } else {
-          echo '<input class="small" type="submit" name="Read'. $i .'" value="Read"/>
-           <input class="small" type="submit" name="Write'. $i . '" value="Write"/>';
-        }
-   echo '
-</tr>
-';
-  }
-    }
   }
   echo '<tr class="listing_footer">
   <td style="text-align: right; vertical-align: top"><img src="' . $self . '?image=arrow" alt="&gt;" /></td>
@@ -3355,6 +3326,7 @@ function getwords ($lang) {
 'permission_not_set' => 'Permission of "[%1]" could not be set to [%2].',
 'not_readable' => '"[%1]" can not be read.',
 'read_access_missing' => "You do not have [%1] access to [%2]."
+//'read_access_missing' => "You do not have [%1] access to [%2]. Get read access? <form><input='submit' text='Get read access'/></form>"
     );
 
   }
@@ -3440,6 +3412,10 @@ function activate (name) {
     document.forms[0].elements['focus'].value = name;
   }
 }
+function permission_clicked(){
+   var e = document.getElementById("askpermission");
+   e.name='action';
+}
 //-->
 </script>
 
@@ -3481,6 +3457,20 @@ function error ($phrase) {
 
   return '<tr id="error">
   <td colspan="' . $cols . '">' . phrase($phrase, $args) . '</td>
+</tr>
+';
+
+}
+
+function error_with_form ($phrase, $form="") {
+  global $cols;
+
+  $args = func_get_args();
+  array_shift($args);
+  array_shift($args);
+
+  return '<tr id="error">
+  <td colspan="' . $cols . '">' . phrase($phrase, $args) . $form . '</td>
 </tr>
 ';
 
@@ -3689,25 +3679,48 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
   }
 
   $con = get_connection();
-  $read_access=true; 
+  $read_access=true;
+  $owner_authorized_awaiting = false;
   foreach ($files as $file) {
-        //if(!@is_dir($file))
-    {        
-		if($debug)
-		   log_this(date(DATE_ATOM). ' query - ' . $query);
+	if($debug)
+	   log_this(date(DATE_ATOM). ' query - ' . $query);
         $res = mysqli_query($con, $query);
         if(mysqli_num_rows($res)<1){
             $read_access=false;
+	    
+            if(strpos($query, "owner_authorized='1'") === FALSE) {
+		
+            } else{
+		$qx = str_replace("owner_authorized='1'", "owner_authorized='0'", $query);	
+	        $rx = mysqli_query($con, $qx);
+        	if(mysqli_num_rows($rx)<1){
+			
+		}else{
+		  $owner_authorized_awaiting = true; 
+		}
+            }
+
             break;    
         }
-    }
   }
-  mysqli_close($con);
+
   if(!$read_access){
-     #listing_page(error('read_access_missing')); 
-     listing_page(error($err_text,$verb,$cfile)); 
+     $access_text = "Ask permission?";
+     $disabled = "";
+     if($owner_authorized_awaiting){
+	$access_text = "Permission awaiting";
+        $disabled = "disabled";
+     }
+     $form="&nbsp;&nbsp;&nbsp;&nbsp;<form action='" .$vars['site']['base_url']. "'><table><tr><td><input type='submit' value='$access_text' $disabled onclick='return permission_clicked();'/>
+<input id='askpermission' type='hidden' value='askpermission'/>
+<input type='hidden'  name='fileperm' value='" . $cfile. "'/>
+<input type='hidden'  name='perm' value='$verb'/>
+</td></tr></table>
+</form>";
+     listing_page(error_with_form($err_text,$form, $verb,$cfile)); 
      die();
   }
+  mysqli_close($con);
 }
  
 function email_with_attach($orig, $new, $file){
