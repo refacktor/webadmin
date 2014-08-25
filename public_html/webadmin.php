@@ -604,14 +604,21 @@ if(!empty($access_perm) && isset($access_perm) && $access_perm!="") {
   $action=$access_perm;
 }
 
+if($debug)
+  log_this(date(DATE_ATOM). ' ACTION - ' . $action. '\n');
+ 
 switch ($action) {
 
 case 'askpermission':
-   global $vars;
+   global $vars, $delim;
    $p = trim(mysql_escape_string($_POST['fileperm']));
    $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
+   $is_dir = strtolower(trim(mysql_escape_string($_POST['is_dir'])));
 
-   $file = relative2absolute($p);
+   $file = relative2absolute($p);	
+   if(strlen($is_dir)>0){
+	$file=addslash($file);	
+   }
    $filesl = addslashes($file);
    $at = ($cp=='read') ? '0':'1';
 
@@ -619,20 +626,25 @@ case 'askpermission':
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
        $msg = "ERROR 101. Please contact your site administrator.";
-   } 
-   
-   $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $filesl . "' and access_type='$at'");
+   }
+   $arr = array($at); 
+   if($is_dir || ends_with($file,$delim))
+      $arr = array('0', '1');
+   foreach ($arr as $val)
+   { 
+      $c=mysqli_query($connection,"SELECT * FROM `file_access` WHERE uid='". $_SESSION['login'] . "' and path='" . $filesl . "' and access_type='$val'");
  
-   if($c && mysqli_num_rows($c) >0){
-      $uquery = "UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='$at'";
-      if($debug)
-         log_this(date(DATE_ATOM). ' query - ' . $uquery);
-      mysqli_query($connection,$uquery);
-   }else{
-      $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '$at', '0','')";
-      if($debug)
-        log_this(date(DATE_ATOM). ' query - ' . $iquery);
-      mysqli_query($connection,$iquery);
+      if($c && mysqli_num_rows($c) >0){
+         $uquery = "UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='$val'";
+         if($debug)
+            log_this(date(DATE_ATOM). ' query - ' . $uquery);
+         mysqli_query($connection,$uquery);
+      }else{
+         $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '$val', '0','')";
+         if($debug)
+           log_this(date(DATE_ATOM). ' query - ' . $iquery);
+         mysqli_query($connection,$iquery);
+      }
    }
    mysqli_close($connection);
  
@@ -641,8 +653,8 @@ case 'askpermission':
    $body_admin.='<a href="[[URL1]]">Grant ' .$cp. '  access</a>.<br/>';
    $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .$cp. ' access</a>.<br/>Thanks.';
    $values = array('USER' => $_SESSION['mail'],
- 		  'URL1' => $vars['site']['base_url']. '?action=read_access&file=' . $file . '&user=' . $_SESSION['mail'],
- 		  'URL2' => $vars['site']['base_url']. '?action=read_deny&file=' . $file . '&user=' . $_SESSION['mail']
+ 		  'URL1' => $vars['site']['base_url']. '?action=' . (($at == '1')? 'write': 'read') .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
+ 		  'URL2' => $vars['site']['base_url']. '?action=' . (($at == '1')? 'write': 'read') .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
  		);
    $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
    mail_admin('webadmin.php - ' .ucfirst($cp). ' access required' , $body_admin, $values, $qu);
@@ -759,7 +771,7 @@ case 'forgot':
 break;
 
 case 'read_access':
-   global $debug;
+   global $debug, $delim;
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -780,28 +792,38 @@ case 'read_access':
    if ( $ownerk == "" ){
        print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
     }
-   $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='0' and file_access.owner_key='$ownerk'";
-   if($debug)
-	    log_this(date(DATE_ATOM). ' query - ' . $squery);
-   $c=mysqli_query($connection,$squery);
+
+   $at="";
+   $access_types = array('0');    
+   if(is_dir($get_path)||ends_with($get_path,$delim)){
+      $access_types = array('0', '1');    
+   }
+   
+   foreach($access_types as $at){
+      $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='$at' and file_access.owner_key='$ownerk'";
+      if($debug)
+               log_this(date(DATE_ATOM). ' query - ' . $squery);
+      $c=mysqli_query($connection,$squery);
   
-  if($c && mysqli_num_rows($c) >0){
-     $row = mysqli_fetch_assoc($c);
-	 $squery1="UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='0' and owner_key='$ownerk'";
-	 if($debug)
-	    log_this(date(DATE_ATOM). ' query - ' . $squery1);
-     mysqli_query($connection,$squery1);
-     $to=$get_email;
-     $subject="webadmin.php - Read access granted";
-     $body="Hi " . $get_email . ', <br/> Your request for read access to ' . stripslashes($get_path). ' has been granted. <br/><br/>Thanks.';
-     $headers  = 'MIME-Version: 1.0' . "\r\n";
-     $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-     mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of read access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
-  }else{
-     print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
-  }
-  mysqli_close($connection);
+      if($c && mysqli_num_rows($c) >0){
+        $row = mysqli_fetch_assoc($c);
+            $squery1="UPDATE `file_access` SET `owner_authorized`='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and `access_type`='$at' and owner_key='$ownerk'";
+            if($debug)
+               log_this(date(DATE_ATOM). ' query - ' . $squery1);
+        mysqli_query($connection,$squery1);
+      } else {
+         print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+      }
+   }
+
+   $to=$get_email;
+   $subject="webadmin.php - Read" . (count($access_types)==2? "/Write": "").  " access granted";
+   $body="Hi " . $get_email . ', <br/> Your request for read' . (count($access_types)==2? "/write": "").   'access to ' . stripslashes($get_path). ' has been granted. <br/><br/>Thanks.';
+   $headers  = 'MIME-Version: 1.0' . "\r\n";
+   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+   print_and_reload("Notified " .$get_email. " of read"  . (count($access_types)==2? "/write": ""). " access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
+   mysqli_close($connection);
 
   break;
 
@@ -850,7 +872,7 @@ case 'read_deny':
 
 
 case 'write_access':
-   global $debug;
+   global $debug, $delim;
    try { 
        $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
    } catch (Exception $exc) {
@@ -871,28 +893,38 @@ case 'write_access':
        print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
     }  
 
-   $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='1' and file_access.owner_key='" . $ownerk. "'";
-   if($debug)
-	    log_this(date(DATE_ATOM). ' query - ' . $squery);
-   $c=mysqli_query($connection, $squery);
+   $at="";
+   $access_types = array('1');    
+   if(is_dir($get_path) || ends_with($get_path,$delim)){
+      $access_types = array('0', '1');    
+   }
 
-  if($c && mysqli_num_rows($c) >0){
-     $row = mysqli_fetch_assoc($c);
-	 $squery1 = "UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='1' and owner_key='" . $ownerk . "'";
-	 if($debug)
-	    log_this(date(DATE_ATOM). ' query - ' . $squery1);
-     mysqli_query($connection, $squery1);
-     $to=$get_email;
-     $subject="webadmin.php - Write access granted";
-     $body="Hi " . $get_email . ', <br/> Your request for write access to ' . stripslashes($get_path) . ' has been granted. <br/><br/>Thanks.';
-     $headers  = 'MIME-Version: 1.0' . "\r\n";
-     $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
-     mail($to, $subject, $body, $headers,'-froot@localhost'); 
-     print_and_reload("Notified " .$get_email. " of write access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
-  }else{
-       print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
-  }
-  mysqli_close($connection);
+
+   foreach($access_types as $at){
+       $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='$at' and file_access.owner_key='" . $ownerk. "'";
+       if($debug)
+                log_this(date(DATE_ATOM). ' query - ' . $squery);
+       $c=mysqli_query($connection, $squery);
+
+       if($c && mysqli_num_rows($c) >0){
+          $row = mysqli_fetch_assoc($c);
+              $squery1 = "UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='$at' and owner_key='" . $ownerk . "'";
+              if($debug)
+                 log_this(date(DATE_ATOM). ' query - ' . $squery1);
+          mysqli_query($connection, $squery1);
+       }else{
+            print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+       }
+   }
+
+   $to=$get_email;
+   $subject="webadmin.php - " . (count($access_types)==2? "Read/": "").  "Write access granted";
+   $body="Hi " . $get_email . ', <br/> Your request for ' . (count($access_types)==2? "Read/": "").  'write access to ' . stripslashes($get_path) . ' has been granted. <br/><br/>Thanks.';
+   $headers  = 'MIME-Version: 1.0' . "\r\n";
+   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+   print_and_reload("Notified " .$get_email. " of " . (count($access_types)==2? "Read/":"" )  . "write access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
+   mysqli_close($connection);
 
   break;
 
@@ -1013,7 +1045,7 @@ break;
 
 case 'view':
 
-  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path in " . get_all_paths($file) ;
+  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='0') and path in " . get_all_paths($file) ;
   //echo $query;
   get_read_access("Please login to copy the files.",$files, $query, 'read_access_missing', 'read', $file);
      
@@ -1062,7 +1094,7 @@ case 'view':
   break;
 
 case 'download':
-  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path in " . get_all_paths($file) ;
+  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='0') and path in " . get_all_paths($file) ;
   get_read_access("Please login to download the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
   header('Pragma: public');
@@ -1152,7 +1184,7 @@ case 'execute':
 
 case 'delete':
   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' ) and path in " . get_all_paths($file);
-  get_read_access("Please login to delete the file(s).",$files, $query, 'read_access_missing', 'read/write', $file);
+  get_read_access("Please login to delete the file(s).",$files, $query, 'read_access_missing', 'write', $file);
 
   if (!empty($_POST['no'])) {
     listing_page();
@@ -1162,6 +1194,8 @@ case 'delete':
     $success = array();
 
     foreach ($files as $file) {
+      if($debug)
+         log_this('file to be deleted - ' . $file);
       if (del($file)) {
         $success[] = $file;
       } else {
@@ -1218,14 +1252,14 @@ case 'delete':
 
 case 'rename':
   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1') and path in " . get_all_paths($file);
-  get_read_access("Please login to rename the file(s).",$files, $query, 'read_access_missing', 'read/write', $file);
+  get_read_access("Please login to rename the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
 
   if (!empty($_POST['destination'])) {
 
     $dest = relative2absolute($_POST['destination'], $directory);
     $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1') and path in " . get_all_paths($dest);
-    get_read_access("Please login to rename the file(s).",$files, $query, 'read_access_missing', 'read/write', $dest);
+    get_read_access("Please login to rename the file(s).",$files, $query, 'read_access_missing', 'write', $dest);
 
 
     if (!@file_exists($dest) && @rename($file, $dest)) {
@@ -1271,9 +1305,9 @@ case 'rename':
   break;
 
 case 'move':
-
-  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1') and path in " . get_all_paths($file);
-  get_read_access("Please login to move the file(s).",$files, $query, 'read_access_missing', 'read/write', $file);
+  global $debug;
+  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='0') and path in " . get_all_paths($file);
+  get_read_access("Please login to move the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
 
   if (!empty($_POST['destination'])) {
@@ -1281,14 +1315,18 @@ case 'move':
     $dest = relative2absolute($_POST['destination'], $directory);
 
     $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1') and path in " . get_all_paths($dest);
-    get_read_access("Please login to move the file(s).",$files, $query, 'read_access_missing', 'read/write', $dest);
+    get_read_access("Please login to move the file(s).",$files, $query, 'read_access_missing', 'write', $dest);
 
     $failure = array();
     $success = array();
 
     foreach ($files as $file) {
       $filename = substr($file, strlen($directory));
-      $d = $dest . $filename;
+      $d = $dest;
+      if ($debug)
+      {
+         log_this(' --- Renaming ' . $file . ' to ' . $d);     
+      }
       if (!@file_exists($d) && @rename($file, $d)) {
         $success[] = $file;
       } else {
@@ -1441,7 +1479,7 @@ case 'copy':
   break;
 
 case 'create_symlink':
-   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='1' or access_type='0') and path in " . get_all_paths($file);
+   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and (access_type='0') and path in " . get_all_paths($file);
   get_read_access("Please login to create symlink(s) of the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
   if (!empty($_POST['destination'])) {
@@ -1500,6 +1538,9 @@ case 'create_symlink':
   break;
 
 case 'edit':
+
+  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and access_type='0' and path in " . get_all_paths($file) ;
+  get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and access_type='1' and path in " . get_all_paths($file) ;
   get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'write', $file);
@@ -1813,9 +1854,15 @@ function getmimetype ($filename) {
 }
 
 function del ($file) {
-  global $delim;
+  global $delim, $debug;
 
-  if (!file_exists($file)) return false;
+  if (!file_exists($file)){
+     if($debug) 
+     {
+	log_this(" --- 1File with name " . $file . " does not exist"  );
+     }
+     return false;
+  }
 
   if (@is_dir($file) && !@is_link($file)) {
 
@@ -1830,8 +1877,14 @@ function del ($file) {
       $success = true;
 
       while (($f = readdir($dir)) !== false) {
+
+ 
         if ($f != '.' && $f != '..' && !del($file . $delim . $f)) {
           $success = false;
+          if($debug) 
+          {
+             log_this(" --- 2File with name " . $file . $delim . $f. " does not exist"  );
+          }
         }
       }
       closedir($dir);
@@ -1955,6 +2008,17 @@ function human_filesize ($filesize) {
   return $filesize . " {$suffix}B";
 
 }
+
+function ends_with($haystack, $needle)
+{
+    $length = strlen($needle);
+    if ($length == 0) {
+        return true;
+    }
+
+    return (substr($haystack, -$length) === $needle);
+}
+
 
 function strip (&$str) {
   $str = stripslashes($str);
@@ -3683,7 +3747,7 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
   $owner_authorized_awaiting = false;
   foreach ($files as $file) {
 	if($debug)
-	   log_this(date(DATE_ATOM). ' query - ' . $query);
+	   log_this(date(DATE_ATOM). ' query - ' . $query . ' - going into');
         $res = mysqli_query($con, $query);
         if(mysqli_num_rows($res)<1){
             $read_access=false;
@@ -3691,7 +3755,9 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
             if(strpos($query, "owner_authorized='1'") === FALSE) {
 		
             } else{
-		$qx = str_replace("owner_authorized='1'", "owner_authorized='0'", $query);	
+		$qx = str_replace("owner_authorized='1'", "owner_authorized='0'", $query);
+		if($debug)
+  	           log_this(date(DATE_ATOM). ' qx - ' . $qx . ' ** ');
 	        $rx = mysqli_query($con, $qx);
         	if(mysqli_num_rows($rx)<1){
 			
@@ -3703,8 +3769,29 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
             break;    
         }
   }
+  if($debug){
+     log_this(date(DATE_ATOM). ' read_access - ' . $read_access . ' ** ');
+     log_this( $read_access ? 'true' : 'false');
+
+  }
 
   if(!$read_access){
+     $isdir = ""; 
+     if (isset($_POST) && array_key_exists('is_dir', $_POST))
+     {
+        $isdir = "<input type='hidden' id='is_dir' name='is_dir' value='true' />";
+     }
+
+     if (isset($_POST) && array_key_exists('create_type', $_POST) && $_POST['create_type'] == 'directory' )
+     {
+        $isdir = "<input type='hidden' id='is_dir' name='is_dir' value='true' />";
+     }
+ 
+     if($debug){
+        log_this(date(DATE_ATOM). ' isdir - ' . $isdir . ' ** ');
+     }
+
+
      $access_text = "Ask permission?";
      $disabled = "";
      if($owner_authorized_awaiting){
@@ -3715,8 +3802,12 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
 <input id='askpermission' type='hidden' value='askpermission'/>
 <input type='hidden'  name='fileperm' value='" . $cfile. "'/>
 <input type='hidden'  name='perm' value='$verb'/>
+". $isdir . "
 </td></tr></table>
 </form>";
+     if($debug)
+        log_this(date(DATE_ATOM). ' form - ' . $form . ' ** ');
+
      listing_page(error_with_form($err_text,$form, $verb,$cfile)); 
      die();
   }
