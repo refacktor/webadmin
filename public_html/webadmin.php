@@ -167,7 +167,7 @@ if(!isset($_SESSION['login'])){
          } 
     
         $code=mysqli_real_escape_string($connection,$_GET['key']);
-	$query="SELECT uid FROM users WHERE activation='$code'";
+		$query="SELECT uid FROM users WHERE activation='$code'";
         if($debug)
            log_this(date(DATE_ATOM). ' query - ' . $query);
 
@@ -611,18 +611,52 @@ switch ($action) {
 
 case 'askpermission':
    global $vars, $delim;
-   $p = trim(mysql_escape_string($_POST['fileperm']));
-   $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
-   $is_dir = strtolower(trim(mysql_escape_string($_POST['is_dir'])));
-   $file = relative2absolute($p);	
-   if(strlen($is_dir)>0){
-      $file=addslash(relative2absolute($_POST['fileperm']));	
-	  $file=mysql_escape_string($file);
+   
+   $fileperm = $_POST['fileperm'];
+   $cp = $_POST['perm'];
+   $is_dir = $_POST['is_dir'];
+   
+   $file ="";
+   $filesl = "";
+   
+   if (get_magic_quotes_gpc()) {
+       $file = stripslashes($fileperm);
    }
-   $filesl = $file;
-   $file = stripslashes($filesl);
+   else {
+	   $file = $fileperm;	
+   }
+   
+   $file = relative2absolute($file);	
+   
+   if(strlen($is_dir)>0){
+      $file=addslash($file);	
+   }
+   
+   $filesl = mysql_real_escape_string($file);
+   
+   
+//   $p = trim(mysql_escape_string($_POST['fileperm']));
+//   $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
+//   $is_dir = strtolower(trim(mysql_escape_string($_POST['is_dir'])));
+//
+//   $file = relative2absolute($p);	
+//   if(strlen($is_dir)>0){
+//      $file=addslash(relative2absolute($_POST['fileperm']));	
+//	  $file=mysql_escape_string($file);
+//   }
+//   $filesl = $file;
+//   if (get_magic_quotes_gpc()) {
+//       $file = stripslashes($filesl);
+//   }
+//   else {
+//   }
+   //$file = stripslashes($filesl);
    //$filesl = addslashes($file);
+   
+   
    $at = ($cp=='read') ? '0':'1';
+   
+   
 //  global $vars, $delim;
 //  $p = trim(mysql_escape_string($_POST['fileperm']));
 //  $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
