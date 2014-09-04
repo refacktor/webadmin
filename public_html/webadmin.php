@@ -167,7 +167,7 @@ if(!isset($_SESSION['login'])){
          } 
     
         $code=mysqli_real_escape_string($connection,$_GET['key']);
-	$query="SELECT uid FROM users WHERE activation='$code'";
+		$query="SELECT uid FROM users WHERE activation='$code'";
         if($debug)
            log_this(date(DATE_ATOM). ' query - ' . $query);
 
@@ -611,24 +611,35 @@ switch ($action) {
 
 case 'askpermission':
    global $vars, $delim;
-   $p = trim(mysql_escape_string($_POST['fileperm']));
-   $cp = strtolower(trim(mysql_escape_string($_POST['perm'])));
-   $is_dir = strtolower(trim(mysql_escape_string($_POST['is_dir'])));
-
-   $file = relative2absolute($p);	
+   
+   $fileperm = $_POST['fileperm'];
+   $cp = $_POST['perm'];
+   $is_dir = $_POST['is_dir'];
+   $rwaccess = $_POST['rwaccess'];
+   
+   $file ="";
+   $filesl = "";
+   
+   /*if (get_magic_quotes_gpc()) {
+       $file = stripslashes($fileperm);
+   }
+   else {
+	   $file = $fileperm;	
+   }*/
+   $file = $fileperm;	
+   $file = relative2absolute($file);	
+   
    if(strlen($is_dir)>0){
-	$file=addslash($file);	
+      $file=addslash($file);	
    }
-   $filesl = addslashes($file);
-   $at = ($cp=='read') ? '0':'1';
-
-   try { 
-       $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
-   } catch (Exception $exc) {
-       $msg = "ERROR 101. Please contact your site administrator.";
-   }
+   
+   $filesl = mysql_real_escape_string($file);
+   
+   $at = ($cp=='read') ? '0':'1';   
+   
+   $connection =get_connection(); 
    $arr = array($at); 
-   if($is_dir || ends_with($file,$delim))
+   if($is_dir || ends_with($file,$delim) || $rwaccess)
       $arr = array('0', '1');
    foreach ($arr as $val)
    { 
@@ -642,19 +653,19 @@ case 'askpermission':
       }else{
          $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '$val', '0','')";
          if($debug)
-           log_this(date(DATE_ATOM). ' query - ' . $iquery);
+           log_this(date(DATE_ATOM). ' query - askpermission - ' . $iquery);
          mysqli_query($connection,$iquery);
       }
    }
    mysqli_close($connection);
  
    /////////// admin_mail ////////////////////
-   $body_admin='Hi, <br/>User - [[USER]]  needs ' . $cp . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
-   $body_admin.='<a href="[[URL1]]">Grant ' .$cp. '  access</a>.<br/>';
-   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .$cp. ' access</a>.<br/>Thanks.';
+   $body_admin='Hi, <br/>User - [[USER]]  needs ' . ($rwaccess? 'read/write' : $cp) . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+   $body_admin.='<a href="[[URL1]]">Grant ' .($rwaccess? 'read/write' : $cp). '  access</a>.<br/>';
+   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .($rwaccess? 'read/write' : $cp). ' access</a>.<br/>Thanks.';
    $values = array('USER' => $_SESSION['mail'],
- 		  'URL1' => $vars['site']['base_url']. '?action=' . (($at == '1')? 'write': 'read') .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
- 		  'URL2' => $vars['site']['base_url']. '?action=' . (($at == '1')? 'write': 'read') .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
+ 		  'URL1' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
+ 		  'URL2' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
  		);
    $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
    mail_admin('webadmin.php - ' .ucfirst($cp). ' access required' , $body_admin, $values, $qu);
@@ -794,15 +805,17 @@ case 'read_access':
     }
 
    $at="";
+   
    $access_types = array('0');    
-   if(is_dir($get_path)||ends_with($get_path,$delim)){
-      $access_types = array('0', '1');    
-   }
+   
+//   if(is_dir($get_path)||ends_with($get_path,$delim)){
+//      $access_types = array('0', '1');    
+//   }
    
    foreach($access_types as $at){
       $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and   `access_type` ='$at' and file_access.owner_key='$ownerk'";
       if($debug)
-               log_this(date(DATE_ATOM). ' query - ' . $squery);
+               log_this(date(DATE_ATOM). ' query - ' . $at . ' - ' . $squery);
       $c=mysqli_query($connection,$squery);
   
       if($c && mysqli_num_rows($c) >0){
@@ -895,9 +908,9 @@ case 'write_access':
 
    $at="";
    $access_types = array('1');    
-   if(is_dir($get_path) || ends_with($get_path,$delim)){
-      $access_types = array('0', '1');    
-   }
+//   if(is_dir($get_path) || ends_with($get_path,$delim)){
+//      $access_types = array('0', '1');    
+//   }
 
 
    foreach($access_types as $at){
@@ -968,6 +981,104 @@ case 'write_deny':
 
   break;
 
+  
+case 'read_write_access':
+   global $debug, $delim;
+   try { 
+       $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+   } catch (Exception $exc) {
+       $msg = "ERROR 101. Please contact your site administrator.";
+   } 
+
+   $get_email=mysqli_real_escape_string($connection,$_GET['user']);
+   $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
+
+   if ( $get_email == "" ){
+       print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
+    }  
+   if ( $get_path == "" ){
+       print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
+    }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
+
+   $access_types = array('0', '1');    
+   foreach($access_types as $at){
+       $squery = "SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and access_type ='$at' and file_access.owner_key='" . $ownerk. "'";
+       if($debug)
+                log_this(date(DATE_ATOM). ' query - ' . $squery);
+       $c=mysqli_query($connection, $squery);
+
+       if($c && mysqli_num_rows($c) >0){
+          $row = mysqli_fetch_assoc($c);
+              $squery1 = "UPDATE `file_access` SET owner_authorized='1' WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='$at' and owner_key='" . $ownerk . "'";
+              if($debug)
+                 log_this(date(DATE_ATOM). ' query - ' . $squery1);
+          mysqli_query($connection, $squery1);
+       }else{
+            print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+       }
+   }
+
+   $to=$get_email;
+   $subject="webadmin.php - Read/Write access granted";
+   $body="Hi " . $get_email . ', <br/> Your request for ' . (count($access_types)==2? "Read/": "").  'write access to ' . stripslashes($get_path) . ' has been granted. <br/><br/>Thanks.';
+   $headers  = 'MIME-Version: 1.0' . "\r\n";
+   $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+   mail($to, $subject, $body, $headers,'-froot@localhost'); 
+   print_and_reload("Notified " .$get_email. " of " . (count($access_types)==2? "Read/":"" )  . "write access granted to " .stripslashes($get_path), 3, $vars['site']['base_url']);
+   mysqli_close($connection);
+
+  break;
+
+case 'read_write_deny':
+   try { 
+       $connection = @mysqli_connect($vars['db']['host'],$vars['db']['user'],$vars['db']['password'],$vars['db']['dbname']);
+   } catch (Exception $exc) {
+       $msg = "ERROR 101. Please contact your site administrator.";
+   } 
+
+   $get_email=mysqli_real_escape_string($connection,$_GET['user']);
+   $get_path=mysqli_real_escape_string($connection,$_GET['file']);
+   $ownerk=mysqli_real_escape_string($connection,$_GET['ownerk']);
+  
+   if ( $get_email == "" ){
+       print_and_reload("User email is missing! Please retry.", 3, $vars['site']['base_url']);
+    }  
+   if ( $get_path == "" ){
+       print_and_reload("File path is missing! Please retry.", 3, $vars['site']['base_url']);
+    }  
+   if ( $ownerk == "" ){
+       print_and_reload("Authorization invalid! Please contact your administrator.", 3, $vars['site']['base_url']);
+    }  
+
+   $c=mysqli_query($connection,"SELECT * FROM `file_access`, users  WHERE `file_access`.uid = users.uid and users.email='" . $get_email . "' and `file_access`.path='" .$get_path . "' and (access_type='1' or access_type='0') and file_access.owner_key='" . $ownerk . "'");
+
+  if($c && mysqli_num_rows($c) >0){
+     $row = mysqli_fetch_assoc($c);
+     $access_types=array('0','1');
+	 foreach($access_types as $at){
+	    mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" . $row['uid']. "' and path = '" .$get_path. "' and access_type='$at' and owner_key = '" . $ownerk . "'");
+ 	 }
+		 
+     $to=$get_email;
+     $subject="webadmin.php - Read/Write access denied";
+     $body="Hi " . $get_email . ', <br/> Sorry to inform you that your request for write access to ' . stripslashes($get_path) . ' has been denied. <br/><br/>Thanks.';
+     $headers  = 'MIME-Version: 1.0' . "\r\n";
+     $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+     mail($to, $subject, $body, $headers,'-froot@localhost'); 
+     print_and_reload("Notified " .$get_email. " of write access denied to " .stripslashes($get_path), 3, $vars['site']['base_url']);
+  }else{
+     print_and_reload("No such request enregistered.", 3, $vars['site']['base_url']);
+  }
+  mysqli_close($connection);
+
+  break;  
+  
+  
+  
 case 'read':
   $file = relative2absolute($file);
   $filesl = addslashes($file);
@@ -1193,15 +1304,20 @@ case 'delete':
     $failure = array();
     $success = array();
 
+	$connection = get_connection();
+	$file = relative2absolute($file);
+	$filesl = mysql_real_escape_string($file);
     foreach ($files as $file) {
       if($debug)
          log_this('file to be deleted - ' . $file);
       if (del($file)) {
+	    mysqli_query($connection,"DELETE from `file_access` WHERE uid = '" .$_SESSION['login']. "' and path = '" .$filesl. "' and (access_type='0' or access_type = '1')");
         $success[] = $file;
       } else {
         $failure[] = $file;
       }
     }
+	mysqli_close($connection);
 
     $message = '';
     if (sizeof($failure) > 0) {
@@ -3782,20 +3898,31 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
         $isdir = "<input type='hidden' id='is_dir' name='is_dir' value='true' />";
      }
 
-     if (isset($_POST) && array_key_exists('create_type', $_POST) && $_POST['create_type'] == 'directory' )
+     if (isset($_POST) && array_key_exists('create_type', $_POST) && ($_POST['create_type'] == 'directory' )) 
      {
         $isdir = "<input type='hidden' id='is_dir' name='is_dir' value='true' />";
      }
  
+     if (isset($_POST) && array_key_exists('rwaccess', $_POST))
+     {
+        $isdir = "<input type='hidden' id='rwaccess' name='rwaccess' value='true' />";
+     }
+
+     if (isset($_POST) && array_key_exists('create_type', $_POST) && ($_POST['create_type'] == 'file' )) 
+     {
+        $isdir = "<input type='hidden' id='rwaccess' name='rwaccess' value='true' />";
+     }
+ 
+ 
      if($debug){
-        log_this(date(DATE_ATOM). ' isdir - ' . $isdir . ' ** ');
+        log_this(date(DATE_ATOM). ' isdir - ' . $isdir . ' ** ' .  ' isfile - ' . $isfile);
      }
 
 
      $access_text = "Ask permission?";
      $disabled = "";
      if($owner_authorized_awaiting){
-	$access_text = "Permission awaiting";
+	    $access_text = "Permission awaiting";
         $disabled = "disabled";
      }
      $form="&nbsp;&nbsp;&nbsp;&nbsp;<form action='" .$vars['site']['base_url']. "'><table><tr><td><input type='submit' value='$access_text' $disabled onclick='return permission_clicked();'/>
