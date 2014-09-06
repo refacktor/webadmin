@@ -129,8 +129,12 @@ $die_and_reload = false;
 $vars = parse_ini_file("../webadmin.ini",true); 
 $debug=false;
 
+$time_to_refresh = false;
 if(isset($vars['debug']['write_log_file']))
    $debug=true;
+if(isset($vars['debug']['time_to_refresh']))
+   $time_to_refresh=$vars['debug']['time_to_refresh'];
+
 if(!isset($vars['debug']['NO_REPORTING']))
    error_reporting(0);
 
@@ -400,6 +404,16 @@ if(!isset($_SESSION['login'])){
 } 
 
 function print_and_reload($msg, $seconds, $url){
+       global $debug,$time_to_refresh;
+       if($debug){
+          $seconds = 10;
+          if(!$time_to_refresh)
+               $time_to_refresh = 5;
+          log_this(date(DATE_ATOM). ' print_and_reload - ' . $msg. ' && url = ' .$url. '\n');
+          $seconds = $time_to_refresh;
+       }
+
+      
        echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
            echo '<script type="text/javascript">
            function doReload(){
