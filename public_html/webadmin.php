@@ -266,9 +266,9 @@ if(!isset($_SESSION['login'])){
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']) && !empty($_POST['justification']) && isset($_POST['justification'])  )
     {
        // username and password sent from form
-       $email = trim(mysql_escape_string($_POST['email']));
-       $justification = trim(mysql_escape_string($_POST['justification']));
-       $passwords = trim(mysql_escape_string($_POST['password']));
+       $email = trim(mysqli_escape_string($_POST['email']));
+       $justification = trim(mysqli_escape_string($_POST['justification']));
+       $passwords = trim(mysqli_escape_string($_POST['password']));
        $password = md5($passwords);
        
        // regular expression for email check
@@ -331,8 +331,8 @@ if(!isset($_SESSION['login'])){
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']))
     {
        // username and password sent from form
-       $email = trim(mysql_escape_string($_POST['email']));
-       $passwords = trim(mysql_escape_string($_POST['password']));
+       $email = trim(mysqli_escape_string($_POST['email']));
+       $passwords = trim(mysqli_escape_string($_POST['password']));
        $password = md5($passwords);
        
        // regular expression for email check
@@ -642,7 +642,7 @@ case 'askpermission':
       $file=addslash($file);	
    }
    
-   $filesl = mysql_real_escape_string($file);
+   $filesl = mysqli_real_escape_string($file);
    
    $at = ($cp=='read') ? '0':'1';   
    
@@ -688,9 +688,9 @@ case 'presetvalues':
  $messageOnly = false;
  if(isset($_POST['password']) && !empty($_POST['password']) && isset($_POST['cpassword']) && !empty($_POST['cpassword']) && isset($_POST['key']) && !empty($_POST['key']))
     {
-       $p = trim(mysql_escape_string($_POST['password']));
-       $cp = trim(mysql_escape_string($_POST['cpassword']));
-       $key = trim(mysql_escape_string($_POST['key']));
+       $p = trim(mysqli_escape_string($_POST['password']));
+       $cp = trim(mysqli_escape_string($_POST['cpassword']));
+       $key = trim(mysqli_escape_string($_POST['key']));
        if(strlen($key)<32){
 	   $msg = "You have submitted an invalid key.";
 	   $_GET['key']=$key;
@@ -723,7 +723,7 @@ case 'preset':
  $messageOnly = true;
  if(!empty($_GET['key']) && isset($_GET['key']))
     {
-       $key = trim(mysql_escape_string($_GET['key']));
+       $key = trim(mysqli_escape_string($_GET['key']));
        $connection =get_connection(); 
        $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
        $count = mysqli_query($connection,$query);
@@ -732,7 +732,7 @@ case 'preset':
 	   $msg = "Please retry. There was no such request received.";
        }else{
            // show password reset fields
-	   $passwords = trim(mysql_escape_string($_POST['password']));
+	   $passwords = trim(mysqli_escape_string($_POST['password']));
            $password = md5($passwords);
 	   $msg = "Please fill with a new password.";
 	   $messageOnly=false;
@@ -747,7 +747,7 @@ break;
 case 'forgot':
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['forgot']) &&  isset($_POST['forgot']))
     {
-       $email = trim(mysql_escape_string($_POST['email']));
+       $email = trim(mysqli_escape_string($_POST['email']));
        
        // regular expression for email check
        $regex = '/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/';
@@ -1315,7 +1315,7 @@ case 'delete':
 
 	$connection = get_connection();
 	$file = relative2absolute($file);
-	$filesl = mysql_real_escape_string($file);
+	$filesl = mysqli_real_escape_string($file);
     foreach ($files as $file) {
       if($debug)
          log_this('file to be deleted - ' . $file);
