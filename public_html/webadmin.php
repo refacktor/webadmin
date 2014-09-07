@@ -130,8 +130,15 @@ $vars = parse_ini_file("../webadmin.ini",true);
 $debug=false;
 
 $time_to_refresh = false;
-if(isset($vars['debug']['write_log_file']))
+if(isset($vars['debug']['write_log_file'])){
    $debug=true;
+}
+
+if(isset($vars['debug']['display_php_errors'])){
+  error_reporting(E_ALL);
+  ini_set('display_errors','On');
+}
+
 if(isset($vars['debug']['time_to_refresh']))
    $time_to_refresh=$vars['debug']['time_to_refresh'];
 
