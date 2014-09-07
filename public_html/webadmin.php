@@ -414,16 +414,11 @@ function print_and_reload($msg, $seconds, $url){
        }
 
       
-       echo $msg . ' ... Redirecting to webadmin in ' . $seconds . ' seconds.';
-           echo '<script type="text/javascript">
-           function doReload(){
-           <!--
-           window.location = "' . $url . '" 
-           //-->
-           }
-           setInterval("doReload()", ' . ($seconds * 1000). ');
-           </script>';
-           die();
+       echo $msg;
+           
+       debug_print_backtrace();
+       
+       die();
 }
 
 function take_url_to($url){
@@ -4126,3 +4121,4 @@ function mail_admin($sub , $msg, $values, $query){
    }
 }
 ?>
+
