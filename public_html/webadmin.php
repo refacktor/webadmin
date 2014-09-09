@@ -164,7 +164,7 @@ if(!isset($_SESSION['login'])){
   $_POST  = filter_input_array(INPUT_POST, FILTER_SANITIZE_STRING);
   $_GET  = filter_input_array(INPUT_GET, FILTER_SANITIZE_STRING);
   $clear_fields = false;
-
+  $conn = get_connection();
   if(isset($_GET['activate'])){
      // activation case
 
@@ -273,9 +273,9 @@ if(!isset($_SESSION['login'])){
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']) && !empty($_POST['justification']) && isset($_POST['justification'])  )
     {
        // username and password sent from form
-       $email = trim(mysqli_escape_string($_POST['email']));
-       $justification = trim(mysqli_escape_string($_POST['justification']));
-       $passwords = trim(mysqli_escape_string($_POST['password']));
+       $email = trim(mysqli_escape_string($conn, $_POST['email']));
+       $justification = trim(mysqli_escape_string($conn, $_POST['justification']));
+       $passwords = trim(mysqli_escape_string($conn, $_POST['password']));
        $password = md5($passwords);
        
        // regular expression for email check
@@ -338,8 +338,8 @@ if(!isset($_SESSION['login'])){
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['password']) &&  isset($_POST['password']))
     {
        // username and password sent from form
-       $email = trim(mysqli_escape_string($_POST['email']));
-       $passwords = trim(mysqli_escape_string($_POST['password']));
+       $email = trim(mysqli_escape_string($conn, $_POST['email']));
+       $passwords = trim(mysqli_escape_string($conn, $_POST['password']));
        $password = md5($passwords);
        
        // regular expression for email check
@@ -408,6 +408,7 @@ if(!isset($_SESSION['login'])){
   else{
      show_register($msg, $case_failure, $email, $passwords, $justification,$clear_fields,false);
   }
+  mysqli_close($conn);
 } 
 
 function print_and_reload($msg, $seconds, $url){
@@ -649,11 +650,12 @@ case 'askpermission':
       $file=addslash($file);	
    }
    
-   $filesl = mysqli_real_escape_string($file);
+   $connection =get_connection(); 
+   $filesl = mysqli_real_escape_string($connection, $file);
    
    $at = ($cp=='read') ? '0':'1';   
    
-   $connection =get_connection(); 
+   
    $arr = array($at); 
    if($is_dir || ends_with($file,$delim) || $rwaccess)
       $arr = array('0', '1');
@@ -695,9 +697,10 @@ case 'presetvalues':
  $messageOnly = false;
  if(isset($_POST['password']) && !empty($_POST['password']) && isset($_POST['cpassword']) && !empty($_POST['cpassword']) && isset($_POST['key']) && !empty($_POST['key']))
     {
-       $p = trim(mysqli_escape_string($_POST['password']));
-       $cp = trim(mysqli_escape_string($_POST['cpassword']));
-       $key = trim(mysqli_escape_string($_POST['key']));
+	   $connection = get_connection();
+       $p = trim(mysqli_escape_string($connection, $_POST['password']));
+       $cp = trim(mysqli_escape_string($connection, $_POST['cpassword']));
+       $key = trim(mysqli_escape_string($connection, $_POST['key']));
        if(strlen($key)<32){
 	   $msg = "You have submitted an invalid key.";
 	   $_GET['key']=$key;
@@ -705,7 +708,7 @@ case 'presetvalues':
 	   $msg = "The passwords you have submitted do not match. Please try again.";
 	   $_GET['key']=$key;
        } else { 
-           $connection =get_connection(); 
+            
            $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
            $count = mysqli_query($connection,$query);
            if(mysqli_num_rows($count) == 0){
@@ -718,8 +721,9 @@ case 'presetvalues':
                $msg = "Your password has been successfully reset.";
                $messageOnly=true;
            }
-	   mysqli_close($connection);
+	   
        }
+	   mysqli_close($connection);
     }else{
 	   $msg = "Invalid password selected. Please try a new one.";
     }    
@@ -730,20 +734,21 @@ case 'preset':
  $messageOnly = true;
  if(!empty($_GET['key']) && isset($_GET['key']))
     {
-       $key = trim(mysqli_escape_string($_GET['key']));
-       $connection =get_connection(); 
+       $connection =get_connection();
+	   $key = trim(mysqli_escape_string($connection, $_GET['key']));        
        $query ="SELECT uid FROM users WHERE activation='$key' and owner_authorized='1'";
        $count = mysqli_query($connection,$query);
        if(mysqli_num_rows($count) == 0){
-	   // no such request
-	   $msg = "Please retry. There was no such request received.";
+	      // no such request
+	      $msg = "Please retry. There was no such request received.";
        }else{
            // show password reset fields
-	   $passwords = trim(mysqli_escape_string($_POST['password']));
-           $password = md5($passwords);
-	   $msg = "Please fill with a new password.";
-	   $messageOnly=false;
+  	      $passwords = trim(mysqli_escape_string($connection, $_POST['password']));
+          $password = md5($passwords);
+  	      $msg = "Please fill with a new password.";
+  	      $messageOnly=false;
        }
+	   mysqli_close($connection);
     }else{
         //invalid password reset attempt
        $msg = "Invalid password reset event.";
@@ -754,45 +759,47 @@ break;
 case 'forgot':
     if(!empty($_POST['email']) && isset($_POST['email']) &&  !empty($_POST['forgot']) &&  isset($_POST['forgot']))
     {
-       $email = trim(mysqli_escape_string($_POST['email']));
+	   $connection =get_connection();
+       $email = trim(mysqli_escape_string($connection, $_POST['email']));
        
        // regular expression for email check
        $regex = '/^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/';
        
        if(preg_match($regex, $email))
-       { 
-          $connection =get_connection(); 
+       {
+           
           $query ="SELECT uid FROM users WHERE email='$email' and owner_authorized='1'";
-       $count = mysqli_query($connection,$query);
-      $cnt = mysqli_num_rows($count);
-      if($cnt>1) {
+          $count = mysqli_query($connection,$query);
+          $cnt = mysqli_num_rows($count);
+          if($cnt>1) {
              $msg = "ERROR 102. Please contact your site administrator.";
           }else if ( $cnt == 0 ) {
-         $msg = "Your registration request is awaiting moderation.";
-         $clear_fields = false;
-      }else if ( $cnt == 1 ){    
-         $activation=md5($email.time()); // encrypted email+timestamp
-         $query = "UPDATE users SET activation='".$activation ."' WHERE email='" .$email. "'";
+			 $msg = "Your registration request is awaiting moderation.";
+			 $clear_fields = false;
+          }else if ( $cnt == 1 ){    
+             $activation=md5($email.time()); // encrypted email+timestamp
+             $query = "UPDATE users SET activation='".$activation ."' WHERE email='" .$email. "'";
              mysqli_query($connection,$query);
                 // sending email
              $to=$email;
              $subject="webadmin.php - Password recovery";
              $base_url = $vars['site']['base_url'];
              $body='Hi, <br/> <br/> We received a request for a password reset of your webadmin account. If you would like to change your password please visit the link below. <br/> <br/> <a href="'.$base_url.'?action=preset&key='.$activation.'">'.$base_url.'?action=preset&key='.$activation.'</a>';
-            $headers  = 'MIME-Version: 1.0' . "\r\n";
-            $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
+             $headers  = 'MIME-Version: 1.0' . "\r\n";
+             $headers .= 'Content-type: text/html; charset=iso-8859-1' . "\r\n";
              mail($to, $subject, $body, $headers,'-froot@localhost'); 
              $msg= "Password reset details sent to your email.";
           }
-          mysqli_close($connection);
+          
        } else {
-        $msg = "Improper email address.";
-      $clear_fields = false;
+         $msg = "Improper email address.";
+         $clear_fields = false;
        }
+	   mysqli_close($connection);
      } else {
        if(isset($_POST))
           $msg = "Please fill the email field.";
-      $clear_fields = false;
+       $clear_fields = false;
      }
      show_register ($msg, 2, "", "", "", true, true); 
 break;
@@ -1322,7 +1329,7 @@ case 'delete':
 
 	$connection = get_connection();
 	$file = relative2absolute($file);
-	$filesl = mysqli_real_escape_string($file);
+	$filesl = mysqli_real_escape_string($connection, $file);
     foreach ($files as $file) {
       if($debug)
          log_this('file to be deleted - ' . $file);
@@ -4128,4 +4135,3 @@ function mail_admin($sub , $msg, $values, $query){
    }
 }
 ?>
-
