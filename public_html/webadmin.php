@@ -1285,7 +1285,15 @@ case 'create_file':
   } else {
     $old = @umask(0777 & ~$filepermission);
     if (@touch($file)) {
-      edit($file);
+      $cq = get_connection();
+      $mq = "SELECT * from file_access WHERE uid=" .$_SESSION['login'] . " and owner_authorized='1' and access_type='0' and path in " . get_all_paths($file);
+      $res = mysqli_query($cq, $mq);
+      if(mysqli_num_rows($res)<1){
+         listing_page(notice('created', $file));
+      }else {
+         edit($file); 
+      }
+      mysqli_close($cq);
     } else {
       listing_page(error('not_created', $file));
     }
