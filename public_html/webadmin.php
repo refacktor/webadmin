@@ -514,9 +514,6 @@ if (function_exists('php_uname')) {
   $win = ($delim == '\\') ? true : false;
 }
 
-//die(" all paths - " . get_all_paths('C:\xampp\htdocs'));
-//die(" all paths - " . get_all_paths('C:\xampp\htdocs\test.txt'));
-//die(" all paths - " . get_all_paths('C:\xampp\My htdocs\t-test.txt\file'));
 
 if (!empty($_SERVER['PATH_TRANSLATED'])) {
   $scriptdir = dirname($_SERVER['PATH_TRANSLATED']);
@@ -536,6 +533,12 @@ if (isset($_POST) && array_key_exists('olddir', $_POST) && !path_is_relative($_P
 }
 
 $directory = simplify_path(addslash($dir));
+
+if(isset($vars['site']['base_dir']))
+   if (strpos($directory,$vars['site']['base_dir']) !== false) {
+   }else{
+       $directory = simplify_path(addslash($vars['site']['base_dir']));
+   }
 
 $files = array();
 $action = '';
