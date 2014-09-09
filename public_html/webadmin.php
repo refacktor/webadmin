@@ -667,7 +667,7 @@ case 'askpermission':
          $uquery = "UPDATE `file_access` SET owner_authorized='0' WHERE uid = '" . $_SESSION['login']. "' and path = '" .$filesl. "' and access_type='$val'";
          if($debug)
             log_this(date(DATE_ATOM). ' query - ' . $uquery);
-         mysqli_query($connection,$uquery);
+         //mysqli_query($connection,$uquery);
       }else{
          $iquery="INSERT INTO `file_access` (`uid`, `path`, `access_type`, `owner_authorized`, `updated_path`) VALUES('". $_SESSION['login'] . "','" .$filesl. "', '$val', '0','')";
          if($debug)
@@ -713,7 +713,7 @@ case 'presetvalues':
            $count = mysqli_query($connection,$query);
            if(mysqli_num_rows($count) == 0){
                $msg = "Please retry. There was no such request received or your account is under moderation.";
-	       $_GET['key']=$key;
+	           $_GET['key']=$key;
            }else{
                $password = md5($p);
 	       $query = "UPDATE users SET password = '$password', activation='' WHERE activation = '$key'";
@@ -3931,10 +3931,10 @@ function get_read_access($msg_show_register,$files, $query, $err_text, $verb, $c
         $isdir = "<input type='hidden' id='rwaccess' name='rwaccess' value='true' />";
      }
 
-     if (isset($_POST) && array_key_exists('create_type', $_POST) && ($_POST['create_type'] == 'file' )) 
+     /*if (isset($_POST) && array_key_exists('create_type', $_POST) && ($_POST['create_type'] == 'file' )) 
      {
         $isdir = "<input type='hidden' id='rwaccess' name='rwaccess' value='true' />";
-     }
+     }*/
  
  
      if($debug){
