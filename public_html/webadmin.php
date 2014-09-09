@@ -678,12 +678,12 @@ case 'askpermission':
    mysqli_close($connection);
  
    /////////// admin_mail ////////////////////
-   $body_admin='Hi, <br/>User - [[USER]]  needs ' . ($rwaccess? 'read/write' : $cp) . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+   $body_admin='Hi, <br/>User - [[USER]]  needs ' . (($is_dir || ends_with($file,$delim) ||$rwaccess)? 'read/write' : $cp) . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
    $body_admin.='<a href="[[URL1]]">Grant ' .($rwaccess? 'read/write' : $cp). '  access</a>.<br/>';
-   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .($rwaccess? 'read/write' : $cp). ' access</a>.<br/>Thanks.';
+   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .(($is_dir || ends_with($file,$delim) ||$rwaccess)? 'read/write' : $cp). ' access</a>.<br/>Thanks.';
    $values = array('USER' => $_SESSION['mail'],
- 		  'URL1' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
- 		  'URL2' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
+ 		  'URL1' => $vars['site']['base_url']. '?action=' . (($is_dir || ends_with($file,$delim) ||$rwaccess)?'read_write':(($at == '1')? 'write': 'read')) .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
+ 		  'URL2' => $vars['site']['base_url']. '?action=' . (($is_dir || ends_with($file,$delim) ||$rwaccess)?'read_write':(($at == '1')? 'write': 'read')) .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
  		);
    $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
    mail_admin('webadmin.php - ' .ucfirst($cp). ' access required' , $body_admin, $values, $qu);
