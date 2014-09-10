@@ -514,9 +514,6 @@ if (function_exists('php_uname')) {
   $win = ($delim == '\\') ? true : false;
 }
 
-//die(" all paths - " . get_all_paths('C:\xampp\htdocs'));
-//die(" all paths - " . get_all_paths('C:\xampp\htdocs\test.txt'));
-//die(" all paths - " . get_all_paths('C:\xampp\My htdocs\t-test.txt\file'));
 
 if (!empty($_SERVER['PATH_TRANSLATED'])) {
   $scriptdir = dirname($_SERVER['PATH_TRANSLATED']);
@@ -536,6 +533,12 @@ if (isset($_POST) && array_key_exists('olddir', $_POST) && !path_is_relative($_P
 }
 
 $directory = simplify_path(addslash($dir));
+
+if(isset($vars['site']['base_dir']))
+   if (strpos($directory,$vars['site']['base_dir']) !== false) {
+   }else{
+       $directory = simplify_path(addslash($vars['site']['base_dir']));
+   }
 
 $files = array();
 $action = '';
@@ -678,12 +681,12 @@ case 'askpermission':
    mysqli_close($connection);
  
    /////////// admin_mail ////////////////////
-   $body_admin='Hi, <br/>User - [[USER]]  needs ' . ($rwaccess? 'read/write' : $cp) . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
+   $body_admin='Hi, <br/>User - [[USER]]  needs ' . (($is_dir || ends_with($file,$delim) ||$rwaccess)? 'read/write' : $cp) . ' access to ' . $file . '. <br/><br/>You can grant it by clicking the link below: ';
    $body_admin.='<a href="[[URL1]]">Grant ' .($rwaccess? 'read/write' : $cp). '  access</a>.<br/>';
-   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .($rwaccess? 'read/write' : $cp). ' access</a>.<br/>Thanks.';
+   $body_admin.='You can deny it by clicking the link below:<br/><a href="[[URL2]]">Deny ' .(($is_dir || ends_with($file,$delim) ||$rwaccess)? 'read/write' : $cp). ' access</a>.<br/>Thanks.';
    $values = array('USER' => $_SESSION['mail'],
- 		  'URL1' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
- 		  'URL2' => $vars['site']['base_url']. '?action=' . ($rwaccess?'read_write':(($at == '1')? 'write': 'read')) .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
+ 		  'URL1' => $vars['site']['base_url']. '?action=' . (($is_dir || ends_with($file,$delim) ||$rwaccess)?'read_write':(($at == '1')? 'write': 'read')) .  '_access&file=' . $file . '&user=' . $_SESSION['mail'],
+ 		  'URL2' => $vars['site']['base_url']. '?action=' . (($is_dir || ends_with($file,$delim) ||$rwaccess)?'read_write':(($at == '1')? 'write': 'read')) .  '_deny&file=' . $file . '&user=' . $_SESSION['mail']
  		);
    $qu = "UPDATE file_access SET owner_key='[[OWNER_KEY]]' WHERE uid='". $_SESSION["login"] . "' and path='$filesl'"; 
    mail_admin('webadmin.php - ' .ucfirst($cp). ' access required' , $body_admin, $values, $qu);
@@ -1285,7 +1288,15 @@ case 'create_file':
   } else {
     $old = @umask(0777 & ~$filepermission);
     if (@touch($file)) {
-      edit($file);
+      $cq = get_connection();
+      $mq = "SELECT * from file_access WHERE uid=" .$_SESSION['login'] . " and owner_authorized='1' and access_type='0' and path in " . get_all_paths($file);
+      $res = mysqli_query($cq, $mq);
+      if(mysqli_num_rows($res)<1){
+         listing_page(notice('created', $file));
+      }else {
+         edit($file); 
+      }
+      mysqli_close($cq);
     } else {
       listing_page(error('not_created', $file));
     }
