@@ -118,7 +118,7 @@
 /*
  * 
  */
-
+ini_set("session.cache_limiter","must-revalidate");
 session_start();
 $msg = "";
 
