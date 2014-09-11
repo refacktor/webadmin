@@ -4091,7 +4091,10 @@ function get_all_paths($path){
 }
 
 function log_this($message){
-  error_log($message, 3, "my-errors.log");
+  date_default_timezone_set('GMT');
+  $today = getdate();
+  $name = $today['year'] . '-' . $today['mon'] . '-' . $today['mday'] . '-'. $today['hours'];
+  error_log($message, 3, "my-errors-" .$name. ".log");
 }
 
 function return_var_dump(){
