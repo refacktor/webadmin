@@ -1689,11 +1689,12 @@ case 'create_symlink':
 
 case 'edit':
 
-  $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and access_type='0' and path in " . get_all_paths($file) ;
-  get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'read', $file);
+  //$query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and access_type='0' and path in " . get_all_paths($file) ;
+  //get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'read', $file);
 
   $query = "SELECT * from file_access WHERE uid=".$_SESSION['login'] . " and owner_authorized='1' and access_type='1' and path in " . get_all_paths($file) ;
-  get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'write', $file);
+  $_POST['rwaccess'] = "rwaccess";
+  get_read_access("Please login to edit the file(s).",$files, $query, 'read_access_missing', 'read/write', $file);
 
 
   if (!empty($_POST['save'])) {
